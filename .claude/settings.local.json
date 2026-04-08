@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan:*)",
+      "Bash(vendor/bin/pint:*)",
+      "Bash(mysql:*)",
+      "Bash(mv 2026_04_07_190620_create_templates_table.php 2026_04_07_190621_create_templates_table.php)",
+      "Bash(mv 2026_04_07_190620_create_transactions_table.php 2026_04_07_190622_create_transactions_table.php)",
+      "Bash(mv 2026_04_07_190620_create_photo_sessions_table.php 2026_04_07_190623_create_photo_sessions_table.php)",
+      "Bash(mv 2026_04_07_190620_create_photos_table.php 2026_04_07_190624_create_photos_table.php)",
+      "Bash(composer show:*)",
+      "Bash(composer require:*)",
+      "Bash(grep -v \"^\\\\s*$\")",
+      "mcp__laravel-boost__database-query",
+      "mcp__laravel-boost__get-absolute-url",
+      "Bash(xargs ls:*)",
+      "Bash(npm run:*)",
+      "Bash(npm install:*)",
+      "Bash(gh repo:*)",
+      "WebFetch(domain:github.com)",
+      "mcp__plugin_ecc_playwright__browser_navigate"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "laravel-boost"
+  ]
+}
