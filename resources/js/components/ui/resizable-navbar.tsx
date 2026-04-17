@@ -29,6 +29,7 @@ interface NavItemsProps {
   }[];
   className?: string;
   onItemClick?: () => void;
+  activeLink?: string;
 }
 
 interface MobileNavProps {
@@ -87,9 +88,7 @@ export const NavBody = ({ children, className, visible }: NavBodyProps) => {
     <motion.div
       animate={{
         backdropFilter: visible ? "blur(16px)" : "none",
-        boxShadow: visible
-          ? "0 0 0 1px rgba(0,0,0,0.06), 0 8px 32px rgba(0,0,0,0.1)"
-          : "none",
+        boxShadow: "none",
         backgroundColor: visible ? "rgba(250,250,245,0.92)" : "transparent",
         width: visible ? "60%" : "100%",
         y: visible ? 12 : 0,
@@ -112,7 +111,7 @@ export const NavBody = ({ children, className, visible }: NavBodyProps) => {
   );
 };
 
-export const NavItems = ({ items, className, onItemClick }: NavItemsProps) => {
+export const NavItems = ({ items, className, onItemClick, activeLink }: NavItemsProps) => {
   const [hovered, setHovered] = useState<number | null>(null);
 
   return (
@@ -123,23 +122,44 @@ export const NavItems = ({ items, className, onItemClick }: NavItemsProps) => {
         className,
       )}
     >
-      {items.map((item, idx) => (
-        <a
-          onMouseEnter={() => setHovered(idx)}
-          onClick={onItemClick}
-          className="relative px-4 py-2 text-zinc-600 transition-colors hover:text-zinc-900"
-          key={`link-${idx}`}
-          href={item.link}
-        >
-          {hovered === idx && (
-            <motion.div
-              layoutId="hovered"
-              className="absolute inset-0 h-full w-full rounded-full bg-zinc-100"
-            />
-          )}
-          <span className="relative z-20">{item.name}</span>
-        </a>
-      ))}
+      {items.map((item, idx) => {
+        const isActive = activeLink
+            ? item.link === '/'
+                ? activeLink === '/'
+                : activeLink.startsWith(item.link)
+            : false;
+        return (
+          <a
+            onMouseEnter={() => setHovered(idx)}
+            onClick={onItemClick}
+            className="relative px-4 py-2 transition-colors hover:text-zinc-900"
+            style={{ color: isActive ? '#E8C900' : undefined }}
+            key={`link-${idx}`}
+            href={item.link}
+          >
+            {hovered === idx && !isActive && (
+              <motion.div
+                layoutId="hovered"
+                className="absolute inset-0 h-full w-full rounded-full bg-zinc-100"
+              />
+            )}
+            {isActive && (
+              <motion.div
+                layoutId="active"
+                className="absolute inset-0 h-full w-full rounded-full"
+                style={{ background: 'rgba(232,201,0,0.12)' }}
+              />
+            )}
+            <span className="relative z-20" style={isActive ? { color: '#b89e00' } : { color: '#52525b' }}>{item.name}</span>
+            {isActive && (
+              <span
+                className="absolute bottom-1 left-1/2 h-0.5 w-4 -translate-x-1/2 rounded-full"
+                style={{ background: '#E8C900' }}
+              />
+            )}
+          </a>
+        );
+      })}
     </motion.div>
   );
 };
@@ -149,9 +169,7 @@ export const MobileNav = ({ children, className, visible }: MobileNavProps) => {
     <motion.div
       animate={{
         backdropFilter: visible ? "blur(16px)" : "none",
-        boxShadow: visible
-          ? "0 0 0 1px rgba(0,0,0,0.06), 0 8px 32px rgba(0,0,0,0.1)"
-          : "none",
+        boxShadow: "none",
         backgroundColor: visible ? "rgba(250,250,245,0.92)" : "transparent",
         width: visible ? "90%" : "100%",
         paddingRight: visible ? "12px" : "0px",
@@ -204,7 +222,7 @@ export const MobileNavMenu = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className={cn(
-            "absolute inset-x-0 top-16 z-50 flex w-full flex-col items-start justify-start gap-4 rounded-2xl border border-zinc-200 bg-white px-4 py-8 shadow-xl",
+            "absolute inset-x-0 top-16 z-50 flex w-full flex-col items-start justify-start gap-4 rounded-2xl bg-white px-4 py-8",
             className,
           )}
         >

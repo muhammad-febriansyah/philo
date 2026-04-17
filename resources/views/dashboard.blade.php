@@ -494,13 +494,13 @@
 <style>
     .dashboard-hero {
         background:
-            radial-gradient(ellipse at 80% -10%, rgba(139, 92, 246, 0.55) 0%, transparent 50%),
-            radial-gradient(ellipse at -5% 110%, rgba(37, 99, 235, 0.55) 0%, transparent 45%),
-            linear-gradient(135deg, #060e24 0%, #0f2260 30%, #1d4ed8 65%, #2563eb 100%);
+            radial-gradient(ellipse at 80% -10%, rgba(232, 180, 0, 0.45) 0%, transparent 50%),
+            radial-gradient(ellipse at -5% 110%, rgba(180, 110, 0, 0.45) 0%, transparent 45%),
+            linear-gradient(135deg, #1a1200 0%, #3d2a00 30%, #7a5200 65%, #9e6e00 100%);
         border-radius: 24px !important;
         position: relative;
         overflow: hidden;
-        box-shadow: 0 20px 60px rgba(15, 34, 96, 0.45), 0 4px 16px rgba(0, 0, 0, 0.2) !important;
+        box-shadow: 0 20px 60px rgba(100, 65, 0, 0.45), 0 4px 16px rgba(0, 0, 0, 0.2) !important;
     }
 
     .dashboard-hero::before {
@@ -543,7 +543,7 @@
         height: 300px;
         bottom: -120px;
         left: 28%;
-        background: radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%);
+        background: radial-gradient(circle, rgba(232, 180, 0, 0.3) 0%, transparent 70%);
         filter: blur(20px);
     }
 

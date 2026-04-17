@@ -43,7 +43,16 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
-            'settings' => Setting::getMany(['site_name', 'logo_path', 'favicon_path', 'primary_color']),
+            'settings' => Setting::getMany([
+                'site_name',
+                'logo_path',
+                'favicon_path',
+                'instagram_url',
+                'facebook_url',
+                'x_url',
+                'tiktok_url',
+                'whatsapp_number',
+            ]),
         ];
     }
 }

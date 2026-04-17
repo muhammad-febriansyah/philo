@@ -18,7 +18,21 @@
       "Bash(npm install:*)",
       "Bash(gh repo:*)",
       "WebFetch(domain:github.com)",
-      "mcp__plugin_ecc_playwright__browser_navigate"
+      "mcp__plugin_ecc_playwright__browser_navigate",
+      "mcp__laravel-boost__browser-logs",
+      "mcp__laravel-boost__last-error",
+      "Bash(python3 /Users/muhammadfebriansyah/.claude/plugins/cache/ui-ux-pro-max-skill/ui-ux-pro-max/2.5.0/.claude/skills/ui-ux-pro-max/scripts/search.py \"photobooth kiosk light warm minimal\" --design-system -p \"Philo Booth\")",
+      "Bash(python3:*)",
+      "mcp__laravel-boost__application-info",
+      "mcp__laravel-boost__database-schema",
+      "mcp__laravel-boost__read-log-entries",
+      "mcp__laravel-boost__search-docs",
+      "Bash(grep -v \"^$\")",
+      "WebSearch",
+      "WebFetch(domain:developers.doku.com)",
+      "Bash(openssl genrsa *)",
+      "Bash(openssl rsa *)",
+      "WebFetch(domain:jokul.doku.com)"
     ]
   },
   "enableAllProjectMcpServers": true,

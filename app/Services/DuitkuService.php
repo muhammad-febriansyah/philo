@@ -23,14 +23,14 @@ class DuitkuService
         $this->merchantCode = Setting::get('duitku_merchant_code', '');
         $this->apiKey = Setting::get('duitku_api_key', '');
         $this->sandbox = Setting::get('duitku_is_sandbox', '1') === '1';
-        $this->paymentMethod = 'GQ';
+        $this->paymentMethod = strtoupper((string) Setting::get('duitku_payment_method', 'GQ'));
         $this->baseUrl = $this->sandbox
             ? 'https://sandbox.duitku.com/webapi'
             : 'https://passport.duitku.com/webapi';
     }
 
     /**
-     * Create a QRIS transaction in Duitku.
+     * Create a transaction in Duitku based on selected payment method.
      *
      * @return array{reference: string, qr_string: string, payment_url: string, expired_at: string}
      *
@@ -44,18 +44,21 @@ class DuitkuService
         string $customerName,
         string $callbackUrl,
         string $returnUrl,
+        ?string $paymentMethod = null,
         int $expiryMinutes = 15,
     ): array {
         if (empty($this->merchantCode) || empty($this->apiKey)) {
             throw new \RuntimeException('Duitku belum dikonfigurasi di pengaturan pembayaran.');
         }
 
+        $resolvedPaymentMethod = strtoupper(trim((string) ($paymentMethod ?: $this->paymentMethod)));
+
         $signature = md5($this->merchantCode . $orderId . $amount . $this->apiKey);
 
         $payload = [
             'merchantCode' => $this->merchantCode,
             'paymentAmount' => $amount,
-            'paymentMethod' => $this->paymentMethod,
+            'paymentMethod' => $resolvedPaymentMethod,
             'merchantOrderId' => $orderId,
             'productDetails' => $productDetail,
             'email' => $email,

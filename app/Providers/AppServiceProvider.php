@@ -31,7 +31,7 @@ class AppServiceProvider extends ServiceProvider
 
     protected function shareSettingsToViews(): void
     {
-        View::composer('layouts.admin', function ($view) {
+        View::composer(['layouts.admin', 'app', 'auth.login'], function ($view) {
             try {
                 $settings = Setting::getMany(['site_name', 'logo_path', 'favicon_path']);
             } catch (\Throwable) {

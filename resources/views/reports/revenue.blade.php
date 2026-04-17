@@ -22,7 +22,7 @@
         </div>
     </div>
 
-    <div class="row">
+    <div class="row g-4 mb-4">
         <div class="col-xl-4 col-md-6">
             <div class="card h-100">
                 <div class="card-body">
@@ -76,7 +76,7 @@
         </div>
     </div>
 
-    <div class="row">
+    <div class="row mt-4">
         <div class="col-lg-12">
             <div class="card">
                 <div class="card-body">
@@ -121,7 +121,7 @@
         </div>
     </div>
 
-    <div class="row">
+    <div class="row mt-4">
         <div class="col-lg-12">
             <div class="card">
                 <div class="card-body">
@@ -133,16 +133,41 @@
                         <div class="row g-2 align-items-end mb-0">
                             <div class="col-md-auto">
                                 <label for="start_date" class="form-label">Tanggal Mulai</label>
-                                <input type="date" id="start_date" class="form-control">
+                                <div class="input-group">
+                                    <input type="text" id="start_date" class="form-control datepicker" placeholder="dd/mm/yyyy" autocomplete="off" style="max-width:140px">
+                                    <span class="input-group-text"><i class="mdi mdi-calendar-outline"></i></span>
+                                </div>
                             </div>
                             <div class="col-md-auto">
                                 <label for="end_date" class="form-label">Tanggal Selesai</label>
-                                <input type="date" id="end_date" class="form-control">
+                                <div class="input-group">
+                                    <input type="text" id="end_date" class="form-control datepicker" placeholder="dd/mm/yyyy" autocomplete="off" style="max-width:140px">
+                                    <span class="input-group-text"><i class="mdi mdi-calendar-outline"></i></span>
+                                </div>
                             </div>
                             <div class="col-md-auto">
                                 <button type="button" class="btn btn-primary" id="btn-filter">
                                     <i class="mdi mdi-filter-outline me-1"></i> Filter
                                 </button>
+                            </div>
+                            <div class="col-md-auto">
+                                <div class="dropdown">
+                                    <button class="btn btn-success dropdown-toggle" type="button" id="btn-export" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="mdi mdi-download-outline me-1"></i> Export
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="btn-export">
+                                        <li>
+                                            <a class="dropdown-item" href="#" id="export-excel">
+                                                <i class="mdi mdi-microsoft-excel me-2 text-success"></i> Export Excel
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="#" id="export-pdf">
+                                                <i class="mdi mdi-file-pdf-box me-2 text-danger"></i> Export PDF
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -167,6 +192,7 @@
 @endsection
 
 @push('styles')
+<link rel="stylesheet" href="{{ asset('assets/libs/bootstrap-datepicker/css/bootstrap-datepicker.min.css') }}">
 <style>
     .bg-soft-primary {
         background-color: rgba(85, 110, 230, 0.12);
@@ -183,50 +209,76 @@
 @endpush
 
 @push('scripts')
+<script src="{{ asset('assets/libs/moment/moment.js') }}"></script>
+<script src="{{ asset('assets/libs/bootstrap-datepicker/js/bootstrap-datepicker.min.js') }}"></script>
+<script src="{{ asset('assets/libs/bootstrap-datepicker/locales/bootstrap-datepicker.id.min.js') }}"></script>
 <script src="{{ asset('assets/libs/chart.js/Chart.bundle.min.js') }}"></script>
 <script>
     $(function () {
-        var ctx = document.getElementById('revenueChart').getContext('2d');
+        // Datepicker
+        $('.datepicker').datepicker({
+            format: 'dd/mm/yyyy',
+            autoclose: true,
+            todayHighlight: true,
+            language: 'id',
+        });
+
+        // Datepicker end_date minimum = start_date
+        $('#start_date').on('changeDate', function () {
+            $('#end_date').datepicker('setStartDate', $(this).datepicker('getDate'));
+        });
+
+        var chartCanvas = document.getElementById('revenueChart');
         var chartData = @json($chartData);
         var selectedBranchId = @json($selectedBranchId);
 
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
-                datasets: [{
-                    label: 'Revenue',
-                    data: chartData,
-                    backgroundColor: 'rgba(69, 137, 247, 0.2)',
-                    borderColor: 'rgba(69, 137, 247, 1)',
-                    borderWidth: 2,
-                    pointBackgroundColor: 'rgba(69, 137, 247, 1)',
-                    tension: 0.3,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    yAxes: [{
-                        ticks: {
-                            beginAtZero: true,
-                            callback: function (value) {
-                                return 'Rp ' + value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-                            },
-                        }
+        if (chartCanvas && typeof Chart !== 'undefined') {
+            new Chart(chartCanvas.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
+                    datasets: [{
+                        label: 'Revenue',
+                        data: chartData,
+                        backgroundColor: 'rgba(69, 137, 247, 0.2)',
+                        borderColor: 'rgba(69, 137, 247, 1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'rgba(69, 137, 247, 1)',
+                        tension: 0.3,
+                        fill: true
                     }]
                 },
-                tooltips: {
-                    callbacks: {
-                        label: function (tooltipItem) {
-                            return 'Revenue: Rp ' + tooltipItem.yLabel.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    legend: {
+                        display: false,
+                    },
+                    scales: {
+                        yAxes: [{
+                            ticks: {
+                                beginAtZero: true,
+                                callback: function (value) {
+                                    return 'Rp ' + value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                                },
+                            }
+                        }],
+                        xAxes: [{
+                            gridLines: {
+                                display: false,
+                            }
+                        }]
+                    },
+                    tooltips: {
+                        callbacks: {
+                            label: function (tooltipItem) {
+                                return 'Revenue: Rp ' + tooltipItem.yLabel.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                            }
                         }
                     }
                 }
-            }
-        });
+            });
+        }
 
         var table = $('#revenue-table').DataTable({
             processing: true,
@@ -235,8 +287,10 @@
                 url: '{{ route('reports.revenue.data') }}',
                 data: function (d) {
                     d.branch_id = selectedBranchId;
-                    d.start_date = $('#start_date').val();
-                    d.end_date = $('#end_date').val();
+                    var sd = $('#start_date').val();
+                    var ed = $('#end_date').val();
+                    d.start_date = sd ? moment(sd, 'DD/MM/YYYY').format('YYYY-MM-DD') : '';
+                    d.end_date   = ed ? moment(ed, 'DD/MM/YYYY').format('YYYY-MM-DD') : '';
                 }
             },
             columns: [
@@ -264,6 +318,29 @@
 
         $('#btn-filter').on('click', function () {
             table.draw();
+        });
+
+        function buildExportUrl(base) {
+            var params = new URLSearchParams();
+            if (selectedBranchId) { params.set('branch_id', selectedBranchId); }
+            var year = {{ $year }};
+            if (year) { params.set('year', year); }
+            var sd = $('#start_date').val();
+            var ed = $('#end_date').val();
+            if (sd) { params.set('start_date', moment(sd, 'DD/MM/YYYY').format('YYYY-MM-DD')); }
+            if (ed) { params.set('end_date', moment(ed, 'DD/MM/YYYY').format('YYYY-MM-DD')); }
+            var qs = params.toString();
+            return base + (qs ? '?' + qs : '');
+        }
+
+        $('#export-excel').on('click', function (e) {
+            e.preventDefault();
+            window.location.href = buildExportUrl('{{ route('reports.revenue.export.excel') }}');
+        });
+
+        $('#export-pdf').on('click', function (e) {
+            e.preventDefault();
+            window.location.href = buildExportUrl('{{ route('reports.revenue.export.pdf') }}');
         });
     });
 </script>

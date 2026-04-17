@@ -31,7 +31,7 @@ class TemplateController extends Controller
                     : ($template->frame_path ? Storage::url($template->frame_path) : null);
 
                 if ($src) {
-                    return '<img src="' . $src . '" class="rounded" style="width:50px;height:50px;object-fit:contain;background:#f8f9fa;" alt="">';
+                    return '<img src="'.$src.'" class="rounded" style="width:50px;height:50px;object-fit:contain;background:#f8f9fa;" alt="">';
                 }
 
                 return '<div class="bg-light rounded d-flex align-items-center justify-content-center" style="width:50px;height:50px;"><i class="mdi mdi-image-frame text-muted fs-5"></i></div>';
@@ -43,15 +43,15 @@ class TemplateController extends Controller
             })
             ->addColumn('actions', function (Template $template) {
                 return '
-                    <a href="' . route('templates.show', $template) . '" class="btn btn-sm btn-info waves-effect me-1">
+                    <a href="'.route('templates.show', $template).'" class="btn btn-sm btn-info waves-effect me-1">
                         <i class="mdi mdi-eye me-1"></i> Detail
                     </a>
-                    <a href="' . route('templates.edit', $template) . '" class="btn btn-sm btn-warning waves-effect me-1">
+                    <a href="'.route('templates.edit', $template).'" class="btn btn-sm btn-warning waves-effect me-1">
                         <i class="mdi mdi-pencil me-1"></i> Edit
                     </a>
                     <button type="button" class="btn btn-sm btn-danger waves-effect btn-delete"
-                        data-name="' . e($template->name) . '"
-                        data-url="' . route('templates.destroy', $template) . '">
+                        data-name="'.e($template->name).'"
+                        data-url="'.route('templates.destroy', $template).'">
                         <i class="mdi mdi-trash-can me-1"></i> Hapus
                     </button>';
             })
@@ -66,19 +66,17 @@ class TemplateController extends Controller
 
     public function store(StoreTemplateRequest $request): RedirectResponse
     {
-        $data = $request->safe()->except(['frame', 'thumbnail']);
+        $data = $request->safe()->except(['thumbnail']);
         $data['is_active'] = $request->boolean('is_active', true);
 
         $data['slot_positions'] = $request->filled('slot_positions')
             ? json_decode($request->input('slot_positions'), true) ?? []
             : [];
 
-        if ($request->hasFile('frame')) {
-            $data['frame_path'] = $request->file('frame')->store('templates/frames', 'public');
-        }
-
         if ($request->hasFile('thumbnail')) {
-            $data['thumbnail_path'] = $request->file('thumbnail')->store('templates/thumbnails', 'public');
+            $path = $request->file('thumbnail')->store('templates/thumbnails', 'public');
+            $data['thumbnail_path'] = $path;
+            $data['frame_path'] = $path;
         }
 
         Template::create($data);
@@ -88,7 +86,7 @@ class TemplateController extends Controller
 
     public function show(Template $template): View
     {
-        $template->frame_url     = $template->frame_path     ? Storage::url($template->frame_path)     : null;
+        $template->frame_url = $template->frame_path ? Storage::url($template->frame_path) : null;
         $template->thumbnail_url = $template->thumbnail_path ? Storage::url($template->thumbnail_path) : null;
 
         return view('templates.show', compact('template'));
@@ -96,7 +94,7 @@ class TemplateController extends Controller
 
     public function edit(Template $template): View
     {
-        $template->frame_url     = $template->frame_path     ? Storage::url($template->frame_path)     : null;
+        $template->frame_url = $template->frame_path ? Storage::url($template->frame_path) : null;
         $template->thumbnail_url = $template->thumbnail_path ? Storage::url($template->thumbnail_path) : null;
 
         return view('templates.edit', compact('template'));
@@ -104,32 +102,26 @@ class TemplateController extends Controller
 
     public function update(UpdateTemplateRequest $request, Template $template): RedirectResponse
     {
-        $data = $request->safe()->except(['frame', 'thumbnail']);
+        $data = $request->safe()->except(['thumbnail']);
         $data['is_active'] = $request->boolean('is_active', true);
 
         $data['slot_positions'] = $request->filled('slot_positions')
             ? json_decode($request->input('slot_positions'), true) ?? []
             : [];
 
-        if ($request->hasFile('frame')) {
-            if ($template->frame_path) {
-                Storage::disk('public')->delete($template->frame_path);
-            }
-            $data['frame_path'] = $request->file('frame')->store('templates/frames', 'public');
-        } else {
-            unset($data['frame_path']);
-        }
-
         if ($request->hasFile('thumbnail')) {
             if ($template->thumbnail_path) {
                 Storage::disk('public')->delete($template->thumbnail_path);
             }
-            $data['thumbnail_path'] = $request->file('thumbnail')->store('templates/thumbnails', 'public');
+            $path = $request->file('thumbnail')->store('templates/thumbnails', 'public');
+            $data['thumbnail_path'] = $path;
+            $data['frame_path'] = $path;
         } elseif ($request->input('remove_thumbnail') === '1' && $template->thumbnail_path) {
             Storage::disk('public')->delete($template->thumbnail_path);
             $data['thumbnail_path'] = null;
+            $data['frame_path'] = null;
         } else {
-            unset($data['thumbnail_path']);
+            unset($data['thumbnail_path'], $data['frame_path']);
         }
 
         $template->update($data);

@@ -11,14 +11,38 @@
 @section('content')
 <div class="row">
     <div class="col-12">
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-transparent border-bottom">
-                <h5 class="card-title mb-0">Filter Transaksi</h5>
+        <!-- Filter + Export Card -->
+        <div class="card border-0 shadow-sm mb-4" style="border-top: 3px solid #C9A800 !important;">
+            <div class="card-header bg-transparent border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="d-flex align-items-center justify-content-center rounded-2 me-1"
+                          style="width:32px;height:32px;background:#fff9e0;border:1.5px solid #C9A800;">
+                        <i class="mdi mdi-filter-outline" style="color:#C9A800;font-size:16px;"></i>
+                    </span>
+                    <h5 class="card-title mb-0 fw-semibold">Filter & Export Transaksi</h5>
+                </div>
+                <div class="d-flex gap-2 flex-wrap" id="export-buttons">
+                    <a id="btn-export-excel"
+                       href="{{ route('transactions.export.excel') }}"
+                       class="btn btn-sm waves-effect d-flex align-items-center gap-1"
+                       style="background:#C9A800;color:#1a1200;font-weight:600;border:none;">
+                        <i class="mdi mdi-microsoft-excel font-size-16"></i>
+                        <span>Export Excel</span>
+                    </a>
+                    <a id="btn-export-pdf"
+                       href="{{ route('transactions.export.pdf') }}"
+                       class="btn btn-sm waves-effect d-flex align-items-center gap-1"
+                       style="background:#1a1200;color:#C9A800;font-weight:600;border:none;">
+                        <i class="mdi mdi-file-pdf-box font-size-16"></i>
+                        <span>Export PDF</span>
+                    </a>
+                </div>
             </div>
             <div class="card-body">
-                <div class="row align-items-end">
-                    <div class="col-md-3 mb-3 mb-md-0">
-                        <label class="form-label text-dark small fw-bold">CABANG</label>
+                <div class="row align-items-end g-3">
+                    @if(!$isCabangUser && $branches->isNotEmpty())
+                    <div class="col-md-3">
+                        <label class="form-label text-dark small fw-bold mb-1">CABANG</label>
                         <select id="filter-branch" class="form-select bg-light border-0">
                             <option value="">Semua Cabang</option>
                             @foreach($branches as $branch)
@@ -26,8 +50,9 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-3 mb-3 mb-md-0">
-                        <label class="form-label text-dark small fw-bold">STATUS PEMBAYARAN</label>
+                    @endif
+                    <div class="col-md-3">
+                        <label class="form-label text-dark small fw-bold mb-1">STATUS PEMBAYARAN</label>
                         <select id="filter-status" class="form-select bg-light border-0">
                             <option value="">Semua Status</option>
                             <option value="pending">PENDING</option>
@@ -37,11 +62,19 @@
                             <option value="cancelled">CANCELLED</option>
                         </select>
                     </div>
-                    <div class="col-md-6 text-md-end">
-                        <button type="button" class="btn btn-soft-primary waves-effect" id="btn-reset-filter">
-                            <i class="mdi mdi-filter-off-outline me-1"></i> Reset Filter
+                    <div class="col-md-auto">
+                        <button type="button" class="btn btn-outline-secondary waves-effect" id="btn-reset-filter">
+                            <i class="mdi mdi-filter-off-outline me-1"></i> Reset
                         </button>
                     </div>
+                    @if($isCabangUser && $branches->isNotEmpty())
+                    <div class="col-12">
+                        <div class="alert alert-light border mb-0 py-2 px-3">
+                            <span class="fw-semibold">Akses cabang aktif:</span>
+                            {{ $branches->first()->name }}
+                        </div>
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -157,16 +190,41 @@ $(function () {
             paginate: { first: 'Pertama', last: 'Terakhir', next: '&raquo;', previous: '&laquo;' },
         },
         responsive: true,
-        order: [[6, 'desc']]
+        order: [[6, 'desc']],
+        search: { search: '{{ addslashes(request("q", "")) }}' }
     });
+
+    @if(request('q'))
+    // Highlight bahwa pencarian aktif dari search bar
+    table.search('{{ addslashes(request("q")) }}').draw();
+    @endif
+
+    function updateExportLinks() {
+        var params = new URLSearchParams();
+        var branch = $('#filter-branch').val();
+        var status = $('#filter-status').val();
+        var q = '{{ addslashes(request("q", "")) }}';
+
+        if (branch) params.set('branch_id', branch);
+        if (status) params.set('status', status);
+        if (q) params.set('q', q);
+
+        var qs = params.toString() ? '?' + params.toString() : '';
+        $('#btn-export-excel').attr('href', '{{ route("transactions.export.excel") }}' + qs);
+        $('#btn-export-pdf').attr('href', '{{ route("transactions.export.pdf") }}' + qs);
+    }
+
+    updateExportLinks();
 
     $('#filter-branch, #filter-status').on('change', function() {
         table.draw();
+        updateExportLinks();
     });
 
     $('#btn-reset-filter').on('click', function() {
         $('#filter-branch, #filter-status').val('');
         table.draw();
+        updateExportLinks();
     });
 
     $('#transactions-table').on('click', '.btn-detail', function() {

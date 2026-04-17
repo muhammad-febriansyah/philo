@@ -110,10 +110,15 @@
 
                         <div class="mb-3">
                             <label for="code" class="form-label">Kode Cabang <span class="text-danger">*</span></label>
-                            <input type="text" id="code" name="code"
-                                class="form-control @error('code') is-invalid @enderror"
-                                value="{{ old('code') }}" placeholder="contoh: JKT-SEL" required>
-                            <div class="form-text">Kode unik untuk identifikasi cabang.</div>
+                            <div class="input-group">
+                                <input type="text" id="code" name="code"
+                                    class="form-control @error('code') is-invalid @enderror"
+                                    value="{{ old('code') }}" placeholder="contoh: JKT-SEL" required style="text-transform:uppercase;">
+                                <button type="button" class="btn btn-outline-secondary" id="btn-generate-code" title="Generate otomatis dari nama">
+                                    <i class="mdi mdi-auto-fix"></i> Generate
+                                </button>
+                            </div>
+                            <div class="form-text">Kode unik untuk identifikasi cabang. Diisi otomatis saat mengetik nama, atau klik Generate.</div>
                             @error('code')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
 
@@ -195,6 +200,45 @@
         area.classList.remove('dragover');
         var file = e.dataTransfer.files[0];
         if (file) { input.files = e.dataTransfer.files; showPreview(file); }
+    });
+})();
+
+// Auto-generate branch code from name
+(function () {
+    var skipWords = ['philo', 'photobooth', 'photo', 'booth', 'cabang', 'studio', 'the', 'di', 'dan', 'dan', 'of'];
+
+    function generateCode(name) {
+        var words = name.trim().split(/\s+/).filter(function (w) {
+            return w.length > 0 && !skipWords.includes(w.toLowerCase());
+        });
+        if (words.length === 0) return '';
+        return words.map(function (w) {
+            return w.substring(0, 3).toUpperCase();
+        }).join('-');
+    }
+
+    var nameInput = document.getElementById('name');
+    var codeInput = document.getElementById('code');
+    var btnGenerate = document.getElementById('btn-generate-code');
+    var autoGenerate = true; // stop auto-fill once user manually edits
+
+    nameInput.addEventListener('input', function () {
+        if (!autoGenerate) return;
+        codeInput.value = generateCode(this.value);
+    });
+
+    codeInput.addEventListener('input', function () {
+        // If user types manually, stop auto-fill (unless field is empty)
+        autoGenerate = this.value === '';
+        this.value = this.value.toUpperCase();
+    });
+
+    btnGenerate.addEventListener('click', function () {
+        var generated = generateCode(nameInput.value);
+        if (generated) {
+            codeInput.value = generated;
+            autoGenerate = false;
+        }
     });
 })();
 </script>

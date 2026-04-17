@@ -15,6 +15,10 @@ function initZone(zoneId, inputId, prevWrapperId, prevImgId, clearId, phId, isTh
 
     function showPreview(file) {
         if (!file || !file.type.startsWith('image/')) return;
+        if (file.size > 10 * 1024 * 1024) {
+            alert('Ukuran file terlalu besar. Maksimal 10 MB.');
+            return;
+        }
         var reader = new FileReader();
         reader.onload = function (e) {
             prevI.src = e.target.result;

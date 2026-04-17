@@ -104,4 +104,36 @@
 
 /* ─── Switch ─── */
 .form-switch-md .form-check-input { width: 44px; height: 22px; cursor: pointer; }
+
+/* ─── Print Size Card Selector ─── */
+.print-size-option {
+    cursor: pointer;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    padding: 12px 8px 10px;
+    text-align: center;
+    transition: all .2s ease;
+    background: #fff;
+    user-select: none;
+    height: 100%;
+}
+.print-size-option:hover { border-color: #556ee6; background: #f0f3ff; }
+.print-size-option.selected {
+    border-color: #556ee6;
+    background: #eef1fd;
+    box-shadow: 0 0 0 3px rgba(85,110,230,.15);
+}
+.print-size-paper {
+    background: #fff;
+    border: 1.5px solid #c0c7d6;
+    margin: 0 auto 8px;
+    border-radius: 2px;
+    box-shadow: 2px 3px 8px rgba(0,0,0,.12);
+}
+.print-size-option.selected .print-size-paper {
+    border-color: #556ee6;
+    box-shadow: 2px 3px 8px rgba(85,110,230,.25);
+}
+.print-size-label { font-size: .82rem; font-weight: 700; color: #495057; line-height: 1.3; }
+.print-size-desc  { font-size: .72rem; color: #aab3c6; }
 </style>

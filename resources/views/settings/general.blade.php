@@ -101,18 +101,9 @@
                                 <textarea name="site_description" class="form-control" rows="3" placeholder="Deskripsi singkat mengenai situs Anda...">{{ old('site_description', $settings['site_description'] ?? '') }}</textarea>
                             </div>
 
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label text-dark fw-bold">Warna Utama (Primary)</label>
-                                    <div class="input-group">
-                                        <input type="color" name="primary_color" class="form-control form-control-color" style="width: 60px;" value="{{ old('primary_color', $settings['primary_color'] ?? '#3c4ccf') }}">
-                                        <input type="text" class="form-control bg-light border-start-0" value="{{ old('primary_color', $settings['primary_color'] ?? '#3c4ccf') }}" id="color-hex" readonly>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label text-dark fw-bold">Footer Text</label>
-                                    <input type="text" name="footer_text" class="form-control" value="{{ old('footer_text', $settings['footer_text'] ?? '') }}" placeholder="Contoh: © 2024 Philo. All rights reserved.">
-                                </div>
+                            <div class="mb-3">
+                                <label class="form-label text-dark fw-bold">Footer Text</label>
+                                <input type="text" name="footer_text" class="form-control" value="{{ old('footer_text', $settings['footer_text'] ?? '') }}" placeholder="Contoh: © 2024 Philo. All rights reserved.">
                             </div>
                         </div>
                     </div>
@@ -129,6 +120,14 @@
                                     <input type="url" name="instagram_url" class="form-control bg-light border-0" placeholder="https://instagram.com/account" value="{{ old('instagram_url', $settings['instagram_url'] ?? '') }}">
                                 </div>
                                 <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold"><i class="mdi mdi-facebook me-1 text-primary"></i> Facebook URL</label>
+                                    <input type="url" name="facebook_url" class="form-control bg-light border-0" placeholder="https://facebook.com/halaman-anda" value="{{ old('facebook_url', $settings['facebook_url'] ?? '') }}">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold"><i class="mdi mdi-close me-1 text-dark"></i> X / Twitter URL</label>
+                                    <input type="url" name="x_url" class="form-control bg-light border-0" placeholder="https://x.com/account" value="{{ old('x_url', $settings['x_url'] ?? '') }}">
+                                </div>
+                                <div class="col-md-6 mb-3">
                                     <label class="form-label fw-bold"><i class="mdi mdi-music-note me-1 text-dark"></i> TikTok URL</label>
                                     <input type="url" name="tiktok_url" class="form-control bg-light border-0" placeholder="https://tiktok.com/@account" value="{{ old('tiktok_url', $settings['tiktok_url'] ?? '') }}">
                                 </div>
@@ -139,6 +138,41 @@
                                         <input type="text" name="whatsapp_number" class="form-control bg-light border-0" placeholder="81234567890" value="{{ old('whatsapp_number', $settings['whatsapp_number'] ?? '') }}">
                                     </div>
                                     <small class="text-muted mt-1 d-block">Gunakan format angka tanpa spasi (contoh: 81222334455).</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4 border-0 shadow-sm text-dark">
+                        <div class="card-header bg-transparent border-bottom p-3">
+                            <h5 class="card-title mb-0">Google Maps Embed</h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Kode Embed / Iframe Google Maps</label>
+                                <textarea
+                                    name="google_maps_embed"
+                                    id="google_maps_embed"
+                                    class="form-control @error('google_maps_embed') is-invalid @enderror"
+                                    rows="6"
+                                    placeholder='Tempel iframe Google Maps di sini, contoh: <iframe src="..."></iframe>'
+                                >{{ old('google_maps_embed', $settings['google_maps_embed'] ?? '') }}</textarea>
+                                @error('google_maps_embed') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                <small class="text-muted mt-2 d-block">Buka Google Maps, pilih Share, lalu Embed a map, kemudian tempel kode iframe di sini.</small>
+                            </div>
+
+                            <div class="rounded-3 border bg-light overflow-hidden">
+                                <div class="px-3 py-2 border-bottom bg-white text-muted small fw-semibold">
+                                    Preview Embed
+                                </div>
+                                <div id="google-maps-preview" class="ratio ratio-16x9">
+                                    @if(!empty($settings['google_maps_embed']))
+                                        {!! $settings['google_maps_embed'] !!}
+                                    @else
+                                        <div class="d-flex align-items-center justify-content-center text-center text-muted px-4">
+                                            Tempel kode embed Google Maps untuk melihat preview di sini.
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                         </div>
@@ -220,11 +254,6 @@
 @push('scripts')
 <script>
     $(function() {
-        // Color Picker Sync
-        $('input[name="primary_color"]').on('input', function() {
-            $('#color-hex').val($(this).val().toUpperCase());
-        });
-
         // Print Settings Toggle
         $('#print_enabled').on('change', function() {
             if ($(this).is(':checked')) {
@@ -280,6 +309,18 @@
             $('#favicon-input').val('');
             $('#remove-favicon').val('1');
             $(this).addClass('d-none');
+        });
+
+        $('#google_maps_embed').on('input', function() {
+            const value = $(this).val().trim();
+            const preview = $('#google-maps-preview');
+
+            if (!value) {
+                preview.html('<div class="d-flex align-items-center justify-content-center text-center text-muted px-4">Tempel kode embed Google Maps untuk melihat preview di sini.</div>');
+                return;
+            }
+
+            preview.html(value);
         });
     });
 </script>

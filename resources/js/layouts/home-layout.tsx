@@ -1,5 +1,6 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { useState } from 'react';
+import HomeFooter from '@/components/home-footer';
 import {
     MobileNav,
     MobileNavHeader,
@@ -24,11 +25,11 @@ const YELLOW = '#E8C900';
  * - Kontak    : WhatsApp / email support
  */
 const NAV_ITEMS = [
-    { name: 'Fitur', link: '#features' },
-    { name: 'Cara Kerja', link: '#how' },
-    { name: 'Harga', link: '#pricing' },
-    { name: 'Cabang', link: '#branches' },
-    { name: 'Kontak', link: '#contact' },
+    { name: 'Home', link: '/' },
+    { name: 'Profil', link: '/profil' },
+    { name: 'Harga', link: '/harga' },
+    { name: 'Cabang', link: '/cabang' },
+    { name: 'Kontak Kami', link: '/kontak' },
 ];
 
 const ApertureIcon = ({
@@ -78,6 +79,7 @@ export default function HomeLayout({
         settings: Record<string, string>;
     }>().props;
     const [mobileOpen, setMobileOpen] = useState(false);
+    const currentUrl = usePage().url;
 
     const ctaHref = auth.user ? dashboard().url : login().url;
     const ctaLabel = auth.user ? 'Buka Dashboard' : 'Masuk Sekarang';
@@ -93,7 +95,8 @@ export default function HomeLayout({
                 {settings?.favicon_path && (
                     <link
                         rel="icon"
-                        href={`/storage/${settings.favicon_path}`}
+                        type="image/x-icon"
+                        href={`/storage/${settings.favicon_path}?v=${encodeURIComponent(settings.favicon_path)}`}
                     />
                 )}
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -134,23 +137,34 @@ export default function HomeLayout({
                                 <img
                                     src={logoUrl}
                                     alt={siteName}
-                                    className="h-20 w-auto object-cover"
+                                    className="h-12 w-40 object-cover"
                                 />
                             ) : (
-                                <div
-                                    className="flex size-8 shrink-0 items-center justify-center rounded-xl"
-                                    style={{ background: YELLOW }}
-                                >
-                                    <ApertureIcon size={16} color="black" />
-                                </div>
+                                <>
+                                    <div
+                                        className="flex size-8 shrink-0 items-center justify-center rounded-xl"
+                                        style={{ background: YELLOW }}
+                                    >
+                                        <ApertureIcon size={16} color="black" />
+                                    </div>
+                                    <span
+                                        className="text-lg leading-none text-zinc-900"
+                                        style={{
+                                            fontFamily: "'Poppins', sans-serif",
+                                            fontWeight: 800,
+                                        }}
+                                    >
+                                        {siteName}
+                                    </span>
+                                </>
                             )}
                         </a>
 
-                        <NavItems items={NAV_ITEMS} />
+                        <NavItems items={NAV_ITEMS} activeLink={currentUrl} />
 
                         <div className="relative z-20 flex items-center gap-3">
                             <NavbarButton
-                                as={Link}
+                                as="a"
                                 href={ctaHref}
                                 variant="primary"
                             >
@@ -167,15 +181,30 @@ export default function HomeLayout({
                                     <img
                                         src={logoUrl}
                                         alt={siteName}
-                                        className="h-20 w-auto object-cover"
+                                        className="h-10 w-32 object-cover"
                                     />
                                 ) : (
-                                    <div
-                                        className="flex size-8 items-center justify-center rounded-xl"
-                                        style={{ background: YELLOW }}
-                                    >
-                                        <ApertureIcon size={16} color="black" />
-                                    </div>
+                                    <>
+                                        <div
+                                            className="flex size-8 items-center justify-center rounded-xl"
+                                            style={{ background: YELLOW }}
+                                        >
+                                            <ApertureIcon
+                                                size={16}
+                                                color="black"
+                                            />
+                                        </div>
+                                        <span
+                                            className="text-lg leading-none text-zinc-900"
+                                            style={{
+                                                fontFamily:
+                                                    "'Poppins', sans-serif",
+                                                fontWeight: 800,
+                                            }}
+                                        >
+                                            {siteName}
+                                        </span>
+                                    </>
                                 )}
                             </a>
                             <MobileNavToggle
@@ -188,18 +217,37 @@ export default function HomeLayout({
                             isOpen={mobileOpen}
                             onClose={() => setMobileOpen(false)}
                         >
-                            {NAV_ITEMS.map((item) => (
-                                <a
-                                    key={item.name}
-                                    href={item.link}
-                                    onClick={() => setMobileOpen(false)}
-                                    className="block py-2 text-sm font-medium text-zinc-700 hover:text-zinc-900"
-                                >
-                                    {item.name}
-                                </a>
-                            ))}
+                            {NAV_ITEMS.map((item) => {
+                                const isActive =
+                                    item.link === '/'
+                                        ? currentUrl === '/'
+                                        : currentUrl.startsWith(item.link);
+                                return (
+                                    <a
+                                        key={item.name}
+                                        href={item.link}
+                                        onClick={() => setMobileOpen(false)}
+                                        className="flex items-center gap-2 py-2 text-sm font-medium transition-colors"
+                                        style={{
+                                            color: isActive
+                                                ? '#b89e00'
+                                                : '#3f3f46',
+                                        }}
+                                    >
+                                        {isActive && (
+                                            <span
+                                                className="inline-block h-1.5 w-1.5 rounded-full"
+                                                style={{
+                                                    background: '#E8C900',
+                                                }}
+                                            />
+                                        )}
+                                        {item.name}
+                                    </a>
+                                );
+                            })}
                             <NavbarButton
-                                as={Link}
+                                as="a"
                                 href={ctaHref}
                                 variant="primary"
                                 className="mt-2 w-full text-center"
@@ -214,37 +262,7 @@ export default function HomeLayout({
                 <main>{children}</main>
 
                 {/* ── FOOTER ── */}
-                <footer id="contact" className="border-t border-zinc-200 py-8">
-                    <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 text-sm text-zinc-500 md:flex-row">
-                        <div className="flex items-center gap-2.5">
-                            {logoUrl ? (
-                                <img
-                                    src={logoUrl}
-                                    alt={siteName}
-                                    className="h-6 w-auto object-contain"
-                                />
-                            ) : (
-                                <div
-                                    className="flex size-7 shrink-0 items-center justify-center rounded-lg"
-                                    style={{ background: YELLOW }}
-                                >
-                                    <ApertureIcon size={14} color="black" />
-                                </div>
-                            )}
-                            <span className="font-semibold text-zinc-700">
-                                {siteName}
-                            </span>
-                        </div>
-                        <p>
-                            © {new Date().getFullYear()} {siteName}. All rights
-                            reserved.
-                        </p>
-                        <div className="flex items-center gap-1 text-zinc-500">
-                            <span className="size-1.5 rounded-full bg-green-400" />
-                            <span>Semua sistem berjalan normal</span>
-                        </div>
-                    </div>
-                </footer>
+                <HomeFooter />
             </div>
         </>
     );

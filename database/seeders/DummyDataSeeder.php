@@ -30,11 +30,15 @@ class DummyDataSeeder extends Seeder
         DB::statement('SET FOREIGN_KEY_CHECKS=1');
 
         // ── Branches ──────────────────────────────────────────────────────────
+        $branchPhotos = collect(glob(storage_path('app/public/branches/*.{jpg,jpeg,png}'), GLOB_BRACE))
+            ->map(fn ($f) => 'branches/'.basename($f))
+            ->values();
+
         $branches = collect([
-            ['name' => 'Philo Jakarta Selatan', 'code' => 'PL-JKS', 'address' => 'Jl. Kemang Raya No. 12, Jakarta Selatan', 'phone' => '02178901234', 'is_active' => true],
-            ['name' => 'Philo Bandung',          'code' => 'PL-BDG', 'address' => 'Jl. Braga No. 45, Bandung',               'phone' => '02298765432', 'is_active' => true],
-            ['name' => 'Philo Surabaya',         'code' => 'PL-SBY', 'address' => 'Jl. Tunjungan No. 88, Surabaya',          'phone' => '03155667788', 'is_active' => true],
-            ['name' => 'Philo Yogyakarta',       'code' => 'PL-YGY', 'address' => 'Jl. Malioboro No. 21, Yogyakarta',        'phone' => '02741122334', 'is_active' => false],
+            ['name' => 'Philo Jakarta Selatan', 'code' => 'PL-JKS', 'address' => 'Jl. Kemang Raya No. 12, Jakarta Selatan', 'phone' => '02178901234', 'is_active' => true,  'photo' => $branchPhotos->get(0)],
+            ['name' => 'Philo Bandung',          'code' => 'PL-BDG', 'address' => 'Jl. Braga No. 45, Bandung',               'phone' => '02298765432', 'is_active' => true,  'photo' => $branchPhotos->get(1)],
+            ['name' => 'Philo Surabaya',         'code' => 'PL-SBY', 'address' => 'Jl. Tunjungan No. 88, Surabaya',          'phone' => '03155667788', 'is_active' => true,  'photo' => $branchPhotos->get(2)],
+            ['name' => 'Philo Yogyakarta',       'code' => 'PL-YGY', 'address' => 'Jl. Malioboro No. 21, Yogyakarta',        'phone' => '02741122334', 'is_active' => false, 'photo' => $branchPhotos->get(3)],
         ])->map(fn ($d) => Branch::create($d));
 
         // ── Packages ──────────────────────────────────────────────────────────
@@ -45,9 +49,13 @@ class DummyDataSeeder extends Seeder
         ])->map(fn ($d) => Package::create($d));
 
         // ── Templates ─────────────────────────────────────────────────────────
+        $thumbnails = collect(glob(storage_path('app/public/templates/thumbnails/*.{png,jpg,jpeg}'), GLOB_BRACE))
+            ->map(fn ($f) => 'templates/thumbnails/'.basename($f))
+            ->values();
+
         $templates = collect([
             [
-                'name' => 'Classic White', 'thumbnail_path' => null, 'frame_path' => 'templates/classic-white.png',
+                'name' => 'Classic White', 'thumbnail_path' => $thumbnails->get(0), 'frame_path' => 'templates/classic-white.png',
                 'print_size' => 'strip', 'photo_slots' => 2, 'is_active' => true,
                 'slot_positions' => [
                     ['x' => 30,  'y' => 30, 'width' => 560, 'height' => 740],
@@ -55,7 +63,7 @@ class DummyDataSeeder extends Seeder
                 ],
             ],
             [
-                'name' => 'Dark Aesthetic', 'thumbnail_path' => null, 'frame_path' => 'templates/dark-aesthetic.png',
+                'name' => 'Dark Aesthetic', 'thumbnail_path' => $thumbnails->get(1), 'frame_path' => 'templates/dark-aesthetic.png',
                 'print_size' => 'A4', 'photo_slots' => 4, 'is_active' => true,
                 'slot_positions' => [
                     ['x' => 30,  'y' => 30,  'width' => 565, 'height' => 370],
@@ -65,7 +73,7 @@ class DummyDataSeeder extends Seeder
                 ],
             ],
             [
-                'name' => 'Vintage Film', 'thumbnail_path' => null, 'frame_path' => 'templates/vintage-film.png',
+                'name' => 'Vintage Film', 'thumbnail_path' => $thumbnails->get(2), 'frame_path' => 'templates/vintage-film.png',
                 'print_size' => 'A3', 'photo_slots' => 6, 'is_active' => true,
                 'slot_positions' => [
                     ['x' => 30,  'y' => 30,  'width' => 370, 'height' => 370],
@@ -77,7 +85,7 @@ class DummyDataSeeder extends Seeder
                 ],
             ],
             [
-                'name' => 'Pastel Dream', 'thumbnail_path' => null, 'frame_path' => 'templates/pastel-dream.png',
+                'name' => 'Pastel Dream', 'thumbnail_path' => $thumbnails->get(3), 'frame_path' => 'templates/pastel-dream.png',
                 'print_size' => 'A4', 'photo_slots' => 4, 'is_active' => true,
                 'slot_positions' => [
                     ['x' => 40,  'y' => 40,  'width' => 540, 'height' => 350],
@@ -91,11 +99,11 @@ class DummyDataSeeder extends Seeder
         // ── User cabang ───────────────────────────────────────────────────────
         $jks = $branches->firstWhere('code', 'PL-JKS');
         User::create([
-            'name'      => 'Operator Jakarta Selatan',
-            'email'     => 'operator.jks@philo.id',
-            'password'  => bcrypt('password'),
-            'role'      => 'cabang',
-            'phone'     => '08122334455',
+            'name' => 'Operator Jakarta Selatan',
+            'email' => 'operator.jks@philo.id',
+            'password' => bcrypt('password'),
+            'role' => 'cabang',
+            'phone' => '08122334455',
             'branch_id' => $jks->id,
         ]);
 
@@ -113,25 +121,25 @@ class DummyDataSeeder extends Seeder
         foreach ($activeBranches as $branch) {
             foreach ($distribution as ['status' => $status, 'count' => $total]) {
                 for ($i = 0; $i < $total; $i++) {
-                    $package   = $packages->random();
+                    $package = $packages->random();
                     $createdAt = Carbon::now()->subDays(rand(0, 60))->subMinutes(rand(0, 1440));
 
                     $txData = [
-                        'order_id'        => 'PHILO-' . strtoupper(Str::random(6)) . '-' . $createdAt->format('YmdHis'),
-                        'branch_id'       => $branch->id,
-                        'package_id'      => $package->id,
-                        'amount'          => $package->price,
-                        'payment_method'  => 'qris',
-                        'status'          => $status,
-                        'qris_string'     => Str::random(32),
-                        'expired_at'      => $createdAt->copy()->addMinutes(15),
-                        'created_at'      => $createdAt,
-                        'updated_at'      => $createdAt,
+                        'order_id' => 'PHILO-'.strtoupper(Str::random(6)).'-'.$createdAt->format('YmdHis'),
+                        'branch_id' => $branch->id,
+                        'package_id' => $package->id,
+                        'amount' => $package->price,
+                        'payment_method' => 'qris',
+                        'status' => $status,
+                        'qris_string' => Str::random(32),
+                        'expired_at' => $createdAt->copy()->addMinutes(15),
+                        'created_at' => $createdAt,
+                        'updated_at' => $createdAt,
                     ];
 
                     if ($status === 'paid') {
-                        $txData['paid_at']            = $createdAt->copy()->addMinutes(rand(1, 10));
-                        $txData['duitku_reference']   = 'DK' . strtoupper(Str::random(12));
+                        $txData['paid_at'] = $createdAt->copy()->addMinutes(rand(1, 10));
+                        $txData['duitku_reference'] = 'DK'.strtoupper(Str::random(12));
                     }
 
                     $transaction = Transaction::create($txData);
@@ -142,21 +150,21 @@ class DummyDataSeeder extends Seeder
 
                     // 80% sesi completed, 20% masih capturing
                     $isCompleted = rand(1, 10) <= 8;
-                    $template    = rand(1, 10) > 2 ? $templates->random() : null;
-                    $paidAt      = $txData['paid_at'];
+                    $template = rand(1, 10) > 2 ? $templates->random() : null;
+                    $paidAt = $txData['paid_at'];
                     $completedAt = $isCompleted
                         ? $paidAt->copy()->addMinutes(rand(5, 20))
                         : null;
 
                     $session = PhotoSession::create([
-                        'transaction_id'  => $transaction->id,
-                        'branch_id'       => $branch->id,
-                        'template_id'     => $template?->id,
-                        'status'          => $isCompleted ? 'completed' : 'capturing',
-                        'final_image_path'=> $isCompleted ? 'final/dummy_' . $transaction->id . '.jpg' : null,
-                        'completed_at'    => $completedAt,
-                        'created_at'      => $paidAt,
-                        'updated_at'      => $completedAt ?? $paidAt,
+                        'transaction_id' => $transaction->id,
+                        'branch_id' => $branch->id,
+                        'template_id' => $template?->id,
+                        'status' => $isCompleted ? 'completed' : 'capturing',
+                        'final_image_path' => $isCompleted ? 'final/dummy_'.$transaction->id.'.jpg' : null,
+                        'completed_at' => $completedAt,
+                        'created_at' => $paidAt,
+                        'updated_at' => $completedAt ?? $paidAt,
                     ]);
 
                     if (! $isCompleted) {
@@ -166,10 +174,10 @@ class DummyDataSeeder extends Seeder
                     for ($p = 1; $p <= $package->photo_count; $p++) {
                         Photo::create([
                             'photo_session_id' => $session->id,
-                            'original_path'    => 'photos/dummy_' . $session->id . '_' . $p . '.jpg',
-                            'order'            => $p,
-                            'created_at'       => $completedAt,
-                            'updated_at'       => $completedAt,
+                            'original_path' => 'photos/dummy_'.$session->id.'_'.$p.'.jpg',
+                            'order' => $p,
+                            'created_at' => $completedAt,
+                            'updated_at' => $completedAt,
                         ]);
                     }
                 }

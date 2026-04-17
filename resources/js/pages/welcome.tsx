@@ -1,4 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
+import { motion } from 'motion/react';
 import HomeLayout from '@/layouts/home-layout';
 import { dashboard, login } from '@/routes';
 import {
@@ -6,49 +7,37 @@ import {
     DraggableCardContainer,
 } from '@/components/ui/draggable-card';
 
+const fadeUp = (delay = 0) => ({
+    initial: { opacity: 0, y: 28 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1], delay },
+});
+
+const fadeIn = (delay = 0) => ({
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    transition: { duration: 0.7, ease: 'easeOut', delay },
+});
+
+const slideRight = (delay = 0) => ({
+    initial: { opacity: 0, x: 40 },
+    animate: { opacity: 1, x: 0 },
+    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1], delay },
+});
+
 const YELLOW = '#E8C900';
 const YELLOW_DIM = 'rgba(232,201,0,0.12)';
 
-const BOOTH_PHOTOS = [
-    {
-        id: 1,
-        src: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=280&h=380&fit=crop&crop=faces',
-        label: 'Studio Portrait',
-        pos: 'top-[16px] left-[10px]',
-    },
-    {
-        id: 2,
-        src: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=280&h=380&fit=crop',
-        label: 'Sesi Grup',
-        pos: 'top-[8px] left-[220px]',
-    },
-    {
-        id: 3,
-        src: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=280&h=380&fit=crop&crop=faces',
-        label: 'Foto Kabinet',
-        pos: 'top-[258px] left-[28px]',
-    },
-    {
-        id: 4,
-        src: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=280&h=380&fit=crop&crop=faces',
-        label: 'Potret Ekspresif',
-        pos: 'top-[248px] left-[236px]',
-    },
+type Gallery = { id: number; title: string; image_path: string };
+
+const CARD_TRANSFORMS = [
+    { rotate: '-26deg', tx: '-8px', ty: '14px' },
+    { rotate: '-16deg', tx: '-4px', ty: '8px' },
+    { rotate: '-7deg',  tx: '2px',  ty: '12px' },
+    { rotate: '6deg',   tx: '6px',  ty: '8px' },
+    { rotate: '16deg',  tx: '2px',  ty: '4px' },
+    { rotate: '-2deg',  tx: '4px',  ty: '0px' },
 ];
-
-type Feature = {
-    id: number;
-    icon: string;
-    title: string;
-    description: string;
-};
-
-type Step = {
-    id: number;
-    number: string;
-    title: string;
-    description: string;
-};
 
 const ApertureIcon = ({
     size = 20,
@@ -302,7 +291,7 @@ const PhotoStripVisual = () => (
             </div>
         </div>
 
-        {/* Badge: revenue */}
+        {/* Badge: rating */}
         <div
             className="absolute top-1/3 -right-2 z-20 rounded-xl px-3 py-2 shadow-lg"
             style={{
@@ -310,25 +299,16 @@ const PhotoStripVisual = () => (
                 border: '1px solid rgba(0,0,0,0.07)',
             }}
         >
-            <div className="text-[10px] text-zinc-500">Revenue Hari Ini</div>
-            <div className="text-base font-extrabold" style={{ color: YELLOW }}>
-                Rp 1.2jt
+            <div className="text-[10px] text-zinc-500">Rating Pelanggan</div>
+            <div className="flex items-center gap-1 mt-0.5">
+                {[1,2,3,4,5].map((s) => (
+                    <svg key={s} viewBox="0 0 24 24" className="size-3.5" fill={YELLOW} stroke={YELLOW} strokeWidth={1}>
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                    </svg>
+                ))}
             </div>
-            <div className="mt-1 flex items-center gap-1 text-[10px] text-emerald-500">
-                <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    className="size-3"
-                >
-                    <path
-                        d="M7 17l10-10M17 7H7v10"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    />
-                </svg>
-                +18% vs kemarin
+            <div className="mt-1 text-[10px] text-zinc-400">
+                4.9 dari <span className="font-semibold text-zinc-600">500+</span> ulasan
             </div>
         </div>
     </div>
@@ -544,16 +524,84 @@ const _BoothMockupUnused = () => (
     </div>
 );
 
+const PROFILE_ITEMS = [
+    {
+        id: 1,
+        icon: (
+            <svg viewBox="0 0 24 24" fill="none" stroke={YELLOW} strokeWidth={1.8} className="size-6">
+                <path d="M3 9a2 2 0 0 1 2-2h1.5l1-2h5l1 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="12" cy="13" r="3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+        ),
+        title: 'Studio Photo Booth Modern',
+        description: 'Dilengkapi perangkat kamera profesional, pencahayaan studio, dan layar sentuh interaktif untuk pengalaman foto terbaik.',
+    },
+    {
+        id: 2,
+        icon: (
+            <svg viewBox="0 0 24 24" fill="none" stroke={YELLOW} strokeWidth={1.8} className="size-6">
+                <rect x="3" y="3" width="18" height="18" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M3 9h18M9 21V9" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+        ),
+        title: '50+ Template Eksklusif',
+        description: 'Pilih dari puluhan desain frame premium sesuai tema — pernikahan, wisuda, ulang tahun, atau momen kasual sehari-hari.',
+    },
+    {
+        id: 3,
+        icon: (
+            <svg viewBox="0 0 24 24" fill="none" stroke={YELLOW} strokeWidth={1.8} className="size-6">
+                <rect x="2" y="5" width="20" height="14" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M2 10h20M6 15h4" strokeLinecap="round" />
+            </svg>
+        ),
+        title: 'Pembayaran QRIS Instan',
+        description: 'Bayar mudah lewat QRIS, proses otomatis, dan sesi foto langsung dimulai tanpa antre lama.',
+    },
+    {
+        id: 4,
+        icon: (
+            <svg viewBox="0 0 24 24" fill="none" stroke={YELLOW} strokeWidth={1.8} className="size-6">
+                <polyline points="6 9 6 2 18 2 18 9" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" strokeLinecap="round" strokeLinejoin="round" />
+                <rect x="6" y="14" width="12" height="8" rx="1" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+        ),
+        title: 'Cetak Foto Langsung',
+        description: 'Hasil cetak berkualitas tinggi tersedia dalam hitungan menit, siap dibawa pulang sebagai kenangan nyata.',
+    },
+    {
+        id: 5,
+        icon: (
+            <svg viewBox="0 0 24 24" fill="none" stroke={YELLOW} strokeWidth={1.8} className="size-6">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" strokeLinecap="round" strokeLinejoin="round" />
+                <polyline points="9 22 9 12 15 12 15 22" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+        ),
+        title: 'Multi-Cabang',
+        description: 'Hadir di berbagai kota dengan standar layanan yang sama — profesional, bersih, dan ramah keluarga.',
+    },
+    {
+        id: 6,
+        icon: (
+            <svg viewBox="0 0 24 24" fill="none" stroke={YELLOW} strokeWidth={1.8} className="size-6">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 11.37 19a19.45 19.45 0 0 1-6.91-6.91 19.79 19.79 0 0 1-2.91-8.45A2 2 0 0 1 3.59 2H6.6a2 2 0 0 1 2 1.72 12.6 12.6 0 0 0 .69 2.77 2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.16 6.16l.92-.92a2 2 0 0 1 2.11-.45 12.6 12.6 0 0 0 2.77.69A2 2 0 0 1 22 16.92z" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+        ),
+        title: 'Dukungan Penuh',
+        description: 'Tim kami siap membantu dari pemilihan paket hingga setelah sesi selesai, memastikan pengalaman yang menyenangkan.',
+    },
+];
+
 export default function Welcome() {
-    const { auth, features, steps } = usePage<{
+    const { auth, galleries } = usePage<{
         auth: any;
-        features: Feature[];
-        steps: Step[];
+        galleries: Gallery[];
     }>().props;
     const ctaHref = auth.user ? dashboard().url : login().url;
 
     return (
-        <HomeLayout title="Kelola Photo Booth Lebih Mudah">
+        <HomeLayout title="Abadikan Setiap Momen Spesial">
             {/* ── HERO ── */}
             <section className="relative flex min-h-screen items-center overflow-hidden px-6 pt-24 pb-16">
                 <div className="pointer-events-none absolute inset-0">
@@ -588,180 +636,283 @@ export default function Welcome() {
                     />
                 </div>
 
-                <div className="relative mx-auto w-full max-w-7xl">
+                <div className="relative mx-auto w-full max-w-6xl">
                     <div className="grid items-center gap-16 lg:grid-cols-2">
                         {/* Left — text */}
                         <div>
-                            <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 py-1.5 text-sm font-medium shadow-sm">
-                                <svg
-                                    viewBox="0 0 24 24"
-                                    fill={YELLOW}
-                                    stroke="none"
-                                    className="size-3.5"
-                                >
+                            {/* Badge */}
+                            <motion.div {...fadeUp(0.1)} className="mb-7 inline-flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-sm font-medium">
+                                <svg viewBox="0 0 24 24" fill={YELLOW} stroke="none" className="size-3.5">
                                     <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z" />
                                 </svg>
-                                <span className="text-zinc-600">
-                                    Platform manajemen photo booth #1
-                                </span>
-                            </div>
+                                <span className="text-zinc-600">Photo Booth Profesional #1</span>
+                            </motion.div>
 
-                            <h1 className="mb-6 text-5xl leading-[1.1] font-extrabold tracking-tight md:text-6xl lg:text-7xl">
-                                Kelola Photo
+                            <motion.h1 {...fadeUp(0.2)} className="mb-6 text-5xl leading-[1.1] font-extrabold tracking-tight md:text-6xl lg:text-7xl">
+                                Abadikan
                                 <br />
-                                Booth{' '}
-                                <span style={{ color: YELLOW }}>
-                                    Lebih Mudah
-                                </span>
-                            </h1>
+                                Setiap{' '}
+                                <span style={{ color: YELLOW }}>Momen</span>
+                                <br />
+                                Spesialmu
+                            </motion.h1>
 
-                            <p className="mb-10 max-w-lg text-lg leading-relaxed text-zinc-600">
-                                Satu platform untuk mengelola sesi foto,
-                                pembayaran otomatis, template, multi-cabang, dan
-                                laporan bisnis photo booth Anda.
-                            </p>
+                            <motion.p {...fadeUp(0.35)} className="mb-10 max-w-lg text-lg leading-relaxed text-zinc-600">
+                                Wedding, wisuda, ulang tahun, atau sekadar foto bareng — studio photo booth kami siap mengabadikan momen terbaikmu jadi kenangan seumur hidup.
+                            </motion.p>
 
-                            <div className="flex flex-wrap gap-4">
+                            {/* CTA buttons */}
+                            <motion.div {...fadeUp(0.45)} className="flex flex-wrap gap-3">
                                 <Link
                                     href={ctaHref}
                                     className="inline-flex items-center gap-2 rounded-full px-8 py-3.5 text-base font-bold text-black transition hover:-translate-y-0.5 hover:brightness-110 active:scale-95"
-                                    style={{
-                                        background: YELLOW,
-                                        boxShadow: `0 4px 24px rgba(232,201,0,0.4)`,
-                                    }}
+                                    style={{ background: YELLOW, boxShadow: '0 4px 24px rgba(232,201,0,0.4)' }}
                                 >
-                                    {auth.user
-                                        ? 'Buka Dashboard'
-                                        : 'Mulai Gratis'}
+                                    {auth.user ? 'Buka Dashboard' : 'Pesan Sekarang'}
                                     <ArrowRight />
                                 </Link>
                                 <a
-                                    href="#features"
-                                    className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-8 py-3.5 text-base font-semibold text-zinc-700 shadow-sm transition hover:border-zinc-400 hover:bg-zinc-50"
+                                    href="/harga"
+                                    className="inline-flex items-center gap-2 rounded-full bg-white px-8 py-3.5 text-base font-semibold text-zinc-700 transition hover:bg-zinc-100 active:scale-95"
                                 >
-                                    Lihat Fitur
+                                    Lihat Paket
                                 </a>
-                            </div>
+                            </motion.div>
 
-                            <div className="mt-12 flex flex-wrap gap-6">
+                            {/* Stats strip */}
+                            <motion.div {...fadeUp(0.55)} className="mt-12 inline-flex flex-wrap items-center divide-x divide-zinc-200 overflow-hidden rounded-2xl bg-white">
                                 {[
-                                    { val: '99.9%', label: 'Uptime' },
-                                    { val: '< 1s', label: 'Respon Sistem' },
-                                    { val: 'QRIS', label: 'Siap Pakai' },
-                                    { val: '∞', label: 'Multi Cabang' },
+                                    { val: '500+', label: 'Sesi Foto' },
+                                    { val: '50+',  label: 'Template' },
+                                    { val: 'QRIS', label: 'Pembayaran' },
+                                    { val: '4.9★', label: 'Rating' },
                                 ].map((s) => (
-                                    <div
-                                        key={s.label}
-                                        className="flex items-center gap-2.5"
-                                    >
-                                        <div
-                                            className="text-xl font-bold"
-                                            style={{ color: YELLOW }}
-                                        >
-                                            {s.val}
-                                        </div>
-                                        <div className="text-sm text-zinc-500">
-                                            {s.label}
-                                        </div>
+                                    <div key={s.label} className="flex flex-col items-center px-5 py-3">
+                                        <span className="text-base font-extrabold" style={{ color: YELLOW }}>{s.val}</span>
+                                        <span className="text-xs text-zinc-500">{s.label}</span>
                                     </div>
                                 ))}
-                            </div>
+                            </motion.div>
                         </div>
 
-                        {/* Right — draggable photo cards */}
-                        <div className="relative hidden h-[520px] lg:block">
-                            {/* Ambient glow */}
+                        {/* Right — polaroid deck */}
+                        <motion.div {...slideRight(0.3)} className="relative hidden h-[620px] items-center justify-center lg:flex">
+                            {/* Yellow blob background */}
                             <div
-                                className="pointer-events-none absolute -top-10 right-0 size-80 rounded-full blur-3xl"
-                                style={{ background: 'rgba(232,201,0,0.22)' }}
+                                className="pointer-events-none absolute inset-0 rounded-[3rem]"
+                                style={{ background: 'radial-gradient(ellipse 70% 60% at 55% 50%, rgba(232,201,0,0.22), transparent 70%)' }}
                             />
+                            {/* Subtle dot pattern */}
                             <div
-                                className="pointer-events-none absolute bottom-0 left-10 size-48 rounded-full blur-3xl"
-                                style={{ background: 'rgba(232,201,0,0.1)' }}
+                                className="pointer-events-none absolute inset-0 rounded-[3rem] opacity-40"
+                                style={{ backgroundImage: 'radial-gradient(rgba(0,0,0,0.06) 1px, transparent 1px)', backgroundSize: '20px 20px' }}
                             />
 
-                            <DraggableCardContainer className="relative h-full w-full">
-                                {BOOTH_PHOTOS.map((photo) => (
-                                    <DraggableCardBody
-                                        key={photo.id}
-                                        className={`absolute ${photo.pos} h-[260px] min-h-0 w-[190px] cursor-grab bg-white p-2 active:cursor-grabbing`}
-                                    >
-                                        <img
-                                            src={photo.src}
-                                            alt={photo.label}
-                                            draggable={false}
-                                            className="h-[210px] w-full rounded object-cover select-none"
-                                        />
-                                        <p className="mt-1.5 text-center text-[11px] font-medium text-zinc-500">
-                                            {photo.label}
-                                        </p>
-                                    </DraggableCardBody>
-                                ))}
+                            <DraggableCardContainer className="relative flex h-full w-full items-center justify-center">
+                                {galleries.slice(0, 6).map((photo, index) => {
+                                    const t = CARD_TRANSFORMS[index % CARD_TRANSFORMS.length];
+                                    return (
+                                        <div
+                                            key={photo.id}
+                                            className="absolute top-1/2 left-1/2"
+                                            style={{
+                                                transform: `translate(calc(-50% + ${t.tx}), calc(-50% + ${t.ty})) rotate(${t.rotate})`,
+                                                zIndex: index + 1,
+                                            }}
+                                        >
+                                            <DraggableCardBody className="h-[420px] min-h-0 w-[290px] cursor-grab bg-white p-3 pb-10 shadow-2xl active:cursor-grabbing">
+                                                <img
+                                                    src={`/storage/${photo.image_path}`}
+                                                    alt={photo.title}
+                                                    draggable={false}
+                                                    className="h-[355px] w-full rounded object-cover select-none"
+                                                />
+                                                <p className="mt-2 text-center text-[10px] font-semibold tracking-[0.15em] text-zinc-400 uppercase">
+                                                    {photo.title}
+                                                </p>
+                                            </DraggableCardBody>
+                                        </div>
+                                    );
+                                })}
                             </DraggableCardContainer>
 
-                            {/* Drag hint */}
-                            <p className="absolute bottom-1 left-1/2 -translate-x-1/2 text-xs whitespace-nowrap text-zinc-400">
-                                ☝️ Drag foto-foto ini!
+                            {/* Floating badge — booth online */}
+                            <motion.div {...fadeIn(0.8)} className="absolute top-6 left-4 z-20 flex items-center gap-2 rounded-full bg-white px-3.5 py-2 shadow-lg">
+                                <span className="size-2 animate-pulse rounded-full bg-emerald-400" />
+                                <span className="text-xs font-semibold text-zinc-800">Booth Online</span>
+                            </motion.div>
+
+                            {/* Floating badge — payment */}
+                            <motion.div {...fadeUp(1.0)} className="absolute bottom-16 -left-2 z-20 min-w-[160px] rounded-2xl bg-white px-4 py-3 shadow-xl">
+                                <div className="mb-1 flex items-center gap-1.5">
+                                    <div className="flex size-5 items-center justify-center rounded-full bg-emerald-100">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth={2.5} className="size-3">
+                                            <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                    </div>
+                                    <span className="text-xs font-semibold text-zinc-800">Pembayaran Berhasil</span>
+                                </div>
+                                <div className="flex items-baseline justify-between gap-3">
+                                    <span className="text-lg font-extrabold text-zinc-900">Rp 35.000</span>
+                                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-600">QRIS</span>
+                                </div>
+                                <div className="mt-0.5 text-[10px] text-zinc-400">Paket Strip 4 Foto · #0041</div>
+                            </motion.div>
+
+                            {/* Floating badge — rating */}
+                            <motion.div {...fadeIn(0.9)} className="absolute top-1/3 -right-2 z-20 rounded-xl bg-white px-3 py-2 shadow-lg" style={{ border: '1px solid rgba(0,0,0,0.07)' }}>
+                                <div className="text-[10px] text-zinc-500">Rating Pelanggan</div>
+                                <div className="flex items-center gap-0.5 mt-0.5">
+                                    {[1,2,3,4,5].map((s) => (
+                                        <svg key={s} viewBox="0 0 24 24" className="size-3.5" fill={YELLOW} stroke={YELLOW} strokeWidth={1}>
+                                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                        </svg>
+                                    ))}
+                                </div>
+                                <div className="mt-1 text-[10px] text-zinc-400">
+                                    4.9 dari <span className="font-semibold text-zinc-600">500+</span> ulasan
+                                </div>
+                            </motion.div>
+
+                            <p className="absolute bottom-3 left-1/2 -translate-x-1/2 text-xs whitespace-nowrap text-zinc-400">
+                                ☝️ Tarik kartu untuk lihat lainnya
                             </p>
-                        </div>
+                        </motion.div>
                     </div>
                 </div>
             </section>
 
-            {/* ── PHOTO STRIP DIVIDER ── */}
-            <div
-                className="relative overflow-hidden border-y border-zinc-200 py-6"
-                style={{ background: 'rgba(232,201,0,0.04)' }}
-            >
+            {/* ── MARQUEE ── */}
+            <div className="relative overflow-hidden py-5" style={{ background: YELLOW }}>
                 <div
-                    className="flex animate-[scroll_20s_linear_infinite] gap-3"
+                    className="flex animate-[marquee_25s_linear_infinite] gap-0 whitespace-nowrap"
                     style={{ width: 'max-content' }}
                 >
-                    {Array.from({ length: 16 }).map((_, i) => (
-                        <div
-                            key={i}
-                            className="flex size-14 shrink-0 items-center justify-center rounded-lg border border-zinc-200"
-                            style={{
-                                background:
-                                    i % 3 === 0
-                                        ? YELLOW_DIM
-                                        : 'rgba(0,0,0,0.03)',
-                            }}
-                        >
-                            <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke={
-                                    i % 3 === 0 ? YELLOW : 'rgba(0,0,0,0.2)'
-                                }
-                                strokeWidth={1.5}
-                                className="size-5"
-                            >
-                                <path
-                                    d="M3 9a2 2 0 0 1 2-2h1.5l1-2h5l1 2H17a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                                <circle
-                                    cx="12"
-                                    cy="13"
-                                    r="3"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                            </svg>
-                        </div>
-                    ))}
+                    {Array.from({ length: 4 }).flatMap((_, gi) =>
+                        ['Wedding', 'Wisuda', 'Ulang Tahun', 'Keluarga', 'Corporate Event', 'Prewedding', 'Komunitas', 'Brand Activation'].map((label) => (
+                            <span key={`${gi}-${label}`} className="inline-flex items-center gap-3 px-6 text-sm font-bold tracking-widest text-black/70 uppercase">
+                                {label}
+                                <span className="text-black/30">✦</span>
+                            </span>
+                        ))
+                    )}
                 </div>
                 <style>{`
-                    @keyframes scroll {
+                    @keyframes marquee {
                         from { transform: translateX(0); }
                         to { transform: translateX(-50%); }
                     }
                 `}</style>
             </div>
 
-            {/* ── FEATURES ── */}
+            {/* ── CARA KERJA ── */}
+            <section className="py-24 px-6">
+                <div className="mx-auto max-w-6xl">
+                    <div className="mb-14 text-center">
+                        <span
+                            className="mb-3 inline-block rounded-full border border-yellow-200 bg-yellow-50 px-4 py-1.5 text-sm font-semibold"
+                            style={{ color: YELLOW }}
+                        >
+                            Cara Kerja
+                        </span>
+                        <h2 className="text-3xl font-bold text-zinc-900 md:text-4xl">
+                            Foto selesai dalam 3 langkah
+                        </h2>
+                        <p className="mt-3 text-zinc-500">
+                            Proses cepat, mudah, tanpa ribet — langsung cetak di tempat.
+                        </p>
+                    </div>
+
+                    <div className="relative grid gap-8 md:grid-cols-3">
+                        {/* Connector line (desktop) */}
+                        <div
+                            className="pointer-events-none absolute top-9 left-[calc(16.67%+1rem)] right-[calc(16.67%+1rem)] hidden h-px md:block"
+                            style={{ background: 'linear-gradient(to right, transparent, rgba(232,201,0,0.4), rgba(232,201,0,0.4), transparent)' }}
+                        />
+
+                        {[
+                            {
+                                step: '01',
+                                title: 'Pilih Paket',
+                                desc: 'Tentukan jumlah foto dan template frame yang kamu inginkan sesuai momen.',
+                                icon: (
+                                    <svg viewBox="0 0 24 24" fill="none" stroke={YELLOW} strokeWidth={1.8} className="size-6">
+                                        <rect x="3" y="3" width="7" height="7" rx="1" strokeLinecap="round" strokeLinejoin="round" />
+                                        <rect x="14" y="3" width="7" height="7" rx="1" strokeLinecap="round" strokeLinejoin="round" />
+                                        <rect x="3" y="14" width="7" height="7" rx="1" strokeLinecap="round" strokeLinejoin="round" />
+                                        <path d="M14 17.5h7M17.5 14v7" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                ),
+                            },
+                            {
+                                step: '02',
+                                title: 'Bayar via QRIS',
+                                desc: 'Scan QRIS, bayar lewat dompet digital atau m-banking mana saja. Proses otomatis.',
+                                icon: (
+                                    <svg viewBox="0 0 24 24" fill="none" stroke={YELLOW} strokeWidth={1.8} className="size-6">
+                                        <rect x="2" y="5" width="20" height="14" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+                                        <path d="M2 10h20" strokeLinecap="round" />
+                                        <path d="M6 15h4" strokeLinecap="round" />
+                                    </svg>
+                                ),
+                            },
+                            {
+                                step: '03',
+                                title: 'Cetak & Bawa Pulang',
+                                desc: 'Foto langsung dicetak dalam hitungan menit. Siap jadi kenangan nyata.',
+                                icon: (
+                                    <svg viewBox="0 0 24 24" fill="none" stroke={YELLOW} strokeWidth={1.8} className="size-6">
+                                        <polyline points="6 9 6 2 18 2 18 9" strokeLinecap="round" strokeLinejoin="round" />
+                                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" strokeLinecap="round" strokeLinejoin="round" />
+                                        <rect x="6" y="14" width="12" height="8" rx="1" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                ),
+                            },
+                        ].map(({ step, title, desc, icon }, i) => (
+                            <motion.div
+                                key={step}
+                                initial={{ opacity: 0, y: 32 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true, margin: '-60px' }}
+                                transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1], delay: i * 0.12 }}
+                                className="relative flex flex-col items-center text-center"
+                            >
+                                {/* Step number + icon */}
+                                <div className="relative mb-6">
+                                    <div
+                                        className="flex size-18 items-center justify-center rounded-2xl"
+                                        style={{ background: 'rgba(232,201,0,0.12)' }}
+                                    >
+                                        {icon}
+                                    </div>
+                                    <span
+                                        className="absolute -top-2.5 -right-2.5 flex size-6 items-center justify-center rounded-full text-[10px] font-black text-black"
+                                        style={{ background: YELLOW }}
+                                    >
+                                        {step}
+                                    </span>
+                                </div>
+                                <h3 className="mb-2 text-lg font-bold text-zinc-900">{title}</h3>
+                                <p className="text-sm leading-relaxed text-zinc-500">{desc}</p>
+                            </motion.div>
+                        ))}
+                    </div>
+
+                    {/* Bottom CTA */}
+                    <div className="mt-14 text-center">
+                        <a
+                            href="/harga"
+                            className="inline-flex items-center gap-2 rounded-full px-8 py-3.5 text-sm font-bold text-black transition hover:-translate-y-0.5 hover:brightness-105 active:scale-95"
+                            style={{ background: YELLOW, boxShadow: '0 4px 24px rgba(232,201,0,0.35)' }}
+                        >
+                            Lihat Paket Harga
+                            <ArrowRight />
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            {/* ── PROFIL ── */}
             <section id="features" className="py-28">
                 <div className="mx-auto max-w-6xl px-6">
                     <div className="mb-16 text-center">
@@ -769,21 +920,25 @@ export default function Welcome() {
                             className="mb-3 inline-block rounded-full border border-yellow-200 bg-yellow-50 px-4 py-1.5 text-sm font-semibold"
                             style={{ color: YELLOW }}
                         >
-                            Fitur Lengkap
+                            Tentang Kami
                         </span>
                         <h2 className="text-3xl font-bold text-zinc-900 md:text-4xl">
-                            Semua yang Anda Butuhkan
+                            Kenapa Pilih Philo Photobooth?
                         </h2>
                         <p className="mt-3 text-zinc-500">
-                            Dari pemilihan paket hingga laporan keuangan, semua
-                            tersedia dalam satu sistem.
+                            Kami hadir untuk menjadikan setiap momen spesialmu
+                            tak terlupakan dengan layanan foto terbaik.
                         </p>
                     </div>
 
                     <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-                        {features.map((f) => (
-                            <div
+                        {PROFILE_ITEMS.map((f, i) => (
+                            <motion.div
                                 key={f.id}
+                                initial={{ opacity: 0, y: 24 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true, margin: '-50px' }}
+                                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: i * 0.08 }}
                                 className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-zinc-300 hover:shadow-md"
                             >
                                 <div
@@ -798,12 +953,9 @@ export default function Welcome() {
                                 />
                                 <div
                                     className="relative mb-4 inline-flex size-11 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110"
-                                    style={{
-                                        background: YELLOW_DIM,
-                                        color: YELLOW,
-                                    }}
+                                    style={{ background: YELLOW_DIM }}
                                 >
-                                    <i className={`${f.icon} text-xl`} />
+                                    {f.icon}
                                 </div>
                                 <h3 className="relative mb-2 font-semibold text-zinc-900">
                                     {f.title}
@@ -811,76 +963,7 @@ export default function Welcome() {
                                 <p className="relative text-sm leading-relaxed text-zinc-500">
                                     {f.description}
                                 </p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* ── HOW IT WORKS ── */}
-            <section id="how" className="relative overflow-hidden py-28">
-                <div
-                    className="absolute inset-0"
-                    style={{
-                        background:
-                            'linear-gradient(to bottom, transparent, rgba(232,201,0,0.05), transparent)',
-                    }}
-                />
-                <div
-                    className="absolute inset-0"
-                    style={{
-                        backgroundImage:
-                            'linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px)',
-                        backgroundSize: '60px 60px',
-                    }}
-                />
-
-                <div className="relative mx-auto max-w-6xl px-6">
-                    <div className="mb-16 text-center">
-                        <span
-                            className="mb-3 inline-block rounded-full border border-yellow-200 bg-yellow-50 px-4 py-1.5 text-sm font-semibold"
-                            style={{ color: YELLOW }}
-                        >
-                            Cara Kerja
-                        </span>
-                        <h2 className="text-3xl font-bold text-zinc-900 md:text-4xl">
-                            Mulai dalam 4 Langkah
-                        </h2>
-                        <p className="mt-3 text-zinc-500">
-                            Setup cepat, langsung operasional dari hari pertama.
-                        </p>
-                    </div>
-
-                    <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-                        {steps.map((s, i) => (
-                            <div key={s.id} className="group relative">
-                                {i < steps.length - 1 && (
-                                    <div className="absolute top-7 left-full z-10 hidden w-full -translate-x-1/2 border-t border-dashed border-zinc-300 lg:block" />
-                                )}
-                                <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-zinc-300 hover:shadow-md">
-                                    <div className="relative mb-5 inline-flex">
-                                        <div
-                                            className="flex size-12 items-center justify-center rounded-full border border-yellow-200 text-sm font-extrabold"
-                                            style={{
-                                                color: YELLOW,
-                                                background: YELLOW_DIM,
-                                            }}
-                                        >
-                                            {s.number}
-                                        </div>
-                                        <div
-                                            className="absolute inset-0 rounded-full opacity-60 blur-sm"
-                                            style={{ background: YELLOW_DIM }}
-                                        />
-                                    </div>
-                                    <h3 className="mb-2 font-semibold text-zinc-900">
-                                        {s.title}
-                                    </h3>
-                                    <p className="text-sm leading-relaxed text-zinc-500">
-                                        {s.description}
-                                    </p>
-                                </div>
-                            </div>
+                            </motion.div>
                         ))}
                     </div>
                 </div>

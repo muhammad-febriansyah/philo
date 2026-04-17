@@ -18,6 +18,7 @@ class DashboardController extends Controller
     public function __invoke(): View
     {
         $branchId = auth()->user()->isCabang() ? auth()->user()->branch_id : null;
+        $branch = $branchId ? auth()->user()->branch : null;
 
         $paidTransactions = Transaction::query()->where('status', 'paid')
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId));
@@ -75,9 +76,10 @@ class DashboardController extends Controller
             ->get();
 
         $topPackages = Package::query()
-            ->leftJoin('transactions', function ($join) {
+            ->leftJoin('transactions', function ($join) use ($branchId) {
                 $join->on('packages.id', '=', 'transactions.package_id')
-                    ->where('transactions.status', '=', 'paid');
+                    ->where('transactions.status', '=', 'paid')
+                    ->when($branchId, fn ($j) => $j->where('transactions.branch_id', $branchId));
             })
             ->select('packages.id', 'packages.name', 'packages.print_size')
             ->selectRaw('COUNT(transactions.id) as total_transactions')
@@ -101,7 +103,7 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        return view('dashboard', [
+        $viewData = [
             'todayRevenue' => $todayRevenue,
             'todayRevenueChange' => $this->percentChange($todayRevenue, $yesterdayRevenue),
             'thisMonthRevenue' => $thisMonthRevenue,
@@ -129,7 +131,13 @@ class DashboardController extends Controller
             'totalSessions' => $totalSessions,
             'monthlyRevenue' => $this->monthlyRevenueTrend($branchId),
             'weeklySessions' => $this->weeklySessionsChart($branchId),
-        ]);
+        ];
+
+        if (auth()->user()->isCabang()) {
+            return view('dashboard-cabang', [...$viewData, 'branch' => $branch]);
+        }
+
+        return view('dashboard', $viewData);
     }
 
     /**

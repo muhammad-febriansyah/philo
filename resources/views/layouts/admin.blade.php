@@ -25,6 +25,58 @@
         <!-- SweetAlert2 -->
         <link href="{{ asset('assets/libs/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" type="text/css" />
         @stack('styles')
+        <style>
+            /* ── Override biru → kuning #C9A800 ── */
+            body[data-topbar=colored] #page-topbar {
+                background-color: #C9A800 !important;
+                box-shadow: 0 2px 8px rgba(232,201,0,0.3) !important;
+            }
+            body[data-topbar=colored] .navbar-brand-box {
+                background: #b89500 !important;
+            }
+            body[data-topbar=colored] .header-item,
+            body[data-topbar=colored] .header-item:hover {
+                color: #18181b !important;
+            }
+            body[data-topbar=colored] .noti-icon i {
+                color: #18181b !important;
+            }
+            body[data-topbar=colored] .dropdown.show .header-item {
+                background-color: rgba(0,0,0,0.08) !important;
+            }
+            body[data-topbar=colored] .app-search .form-control {
+                background-color: rgba(0,0,0,0.08) !important;
+                color: #18181b !important;
+            }
+            body[data-topbar=colored] .app-search input.form-control::-webkit-input-placeholder,
+            body[data-topbar=colored] .app-search span {
+                color: rgba(0,0,0,0.45) !important;
+            }
+            .page-title-box {
+                background-color: #C9A800 !important;
+            }
+            .page-title-box .page-title {
+                color: #18181b !important;
+            }
+            .page-title-box .breadcrumb-item > a,
+            .page-title-box .breadcrumb-item.active {
+                color: rgba(0,0,0,0.55) !important;
+            }
+            .right-bar .rightbar-title {
+                background-color: #C9A800 !important;
+                color: #18181b !important;
+            }
+            /* Sidebar active icon & link color */
+            :root, [data-bs-theme=light] {
+                --bs-sidebar-menu-item-icon-color: #b89e00;
+                --bs-sidebar-menu-item-active-color: #b89e00;
+            }
+            #sidebar-menu ul li a.active,
+            .mm-active > a,
+            .mm-active .active {
+                color: #b89e00 !important;
+            }
+        </style>
     </head>
 
     <body data-topbar="colored">
@@ -80,9 +132,9 @@
                         </button>
 
                         <!-- App Search-->
-                        <form class="app-search d-none d-lg-block">
+                        <form class="app-search d-none d-lg-block" method="GET" action="{{ route('transactions.index') }}">
                             <div class="position-relative mt-3">
-                                <input type="text" class="form-control" placeholder="Search...">
+                                <input type="text" name="q" class="form-control" placeholder="Cari transaksi..." value="{{ request('q') }}" autocomplete="off">
                                 <span class="mdi mdi-magnify"></span>
                             </div>
                         </form>
@@ -145,10 +197,39 @@
                                     <span>Cabang</span>
                                 </a>
                             </li>
+                            @endif
+
+                            <li>
+                                <a href="{{ route('templates.index') }}" class="waves-effect {{ request()->routeIs('templates.*') ? 'active' : '' }}">
+                                    <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-image-frame"></i></div>
+                                    <span>Template / Frame</span>
+                                </a>
+                            </li>
+
+                            <li>
+                                <a href="{{ route('packages.index') }}" class="waves-effect {{ request()->routeIs('packages.*') ? 'active' : '' }}">
+                                    <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-tag-outline"></i></div>
+                                    <span>Paket Harga</span>
+                                </a>
+                            </li>
+
+                            @if(auth()->user()->isAdmin())
+                            <li>
+                                <a href="{{ route('galleries.index') }}" class="waves-effect {{ request()->routeIs('galleries.*') ? 'active' : '' }}">
+                                    <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-image-outline"></i></div>
+                                    <span>Galeri</span>
+                                </a>
+                            </li>
                             <li>
                                 <a href="{{ route('features.index') }}" class="waves-effect {{ request()->routeIs('features.*') ? 'active' : '' }}">
                                     <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-star-outline"></i></div>
                                     <span>Fitur Unggulan</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="{{ route('faqs.index') }}" class="waves-effect {{ request()->routeIs('faqs.*') ? 'active' : '' }}">
+                                    <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-comment-question-outline"></i></div>
+                                    <span>FAQ</span>
                                 </a>
                             </li>
                             <li>
@@ -158,13 +239,6 @@
                                 </a>
                             </li>
                             @endif
-
-                            <li>
-                                <a href="{{ route('templates.index') }}" class="waves-effect {{ request()->routeIs('templates.*') ? 'active' : '' }}">
-                                    <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-image-frame"></i></div>
-                                    <span>Template / Frame</span>
-                                </a>
-                            </li>
 
                             <li class="menu-title">Operasional</li>
 
@@ -211,7 +285,14 @@
                             <li>
                                 <a href="{{ route('settings.payment') }}" class="waves-effect {{ request()->routeIs('settings.payment') ? 'active' : '' }}">
                                     <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-cash-multiple"></i></div>
-                                    <span>Pengaturan Pembayaran</span>
+                                    <span>Pembayaran</span>
+                                </a>
+                            </li>
+
+                            <li>
+                                <a href="{{ route('settings.about') }}" class="waves-effect {{ request()->routeIs('settings.about') ? 'active' : '' }}">
+                                    <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-information-outline"></i></div>
+                                    <span>Tentang Kami</span>
                                 </a>
                             </li>
 

@@ -15,7 +15,7 @@
 
 @section('content')
 <div class="row justify-content-center">
-    <div class="col-xl-11">
+    <div class="col-xl-12">
         <form action="{{ route('templates.store') }}" method="POST" enctype="multipart/form-data" id="tmpl-form">
             @csrf
             <input type="hidden" name="slot_positions" id="slot-positions-json" value="[]">
@@ -23,7 +23,7 @@
             <div class="row g-4">
 
                 {{-- ── LEFT: Metadata + Thumbnail ── --}}
-                <div class="col-lg-4">
+                <div class="col-lg-6">
 
                     <div class="card border-0 shadow-sm mb-4">
                         <div class="card-header bg-transparent">
@@ -39,13 +39,28 @@
 
                             <div class="mb-3">
                                 <label class="form-label fw-bold text-dark">Ukuran Cetak <span class="text-danger">*</span></label>
-                                <select name="print_size" class="form-select @error('print_size') is-invalid @enderror" required>
-                                    <option value="">-- Pilih Ukuran --</option>
-                                    @foreach(['strip' => 'Photo Strip (2×6")', '4R' => '4R', 'A4' => 'A4', 'A3' => 'A3'] as $val => $label)
-                                        <option value="{{ $val }}" {{ old('print_size') == $val ? 'selected' : '' }}>{{ $label }}</option>
+                                <input type="hidden" name="print_size" id="print-size-value" value="{{ old('print_size') }}">
+                                <div class="row g-2 mt-1">
+                                    @php
+                                        $printSizes = [
+                                            'strip' => ['label' => 'Strip', 'desc' => '2×6 inci', 'w' => 24, 'h' => 72],
+                                            '4R'    => ['label' => '4R',   'desc' => '4×6 inci', 'w' => 40, 'h' => 60],
+                                            'A4'    => ['label' => 'A4',   'desc' => '210×297 mm', 'w' => 46, 'h' => 65],
+                                            'A3'    => ['label' => 'A3',   'desc' => '297×420 mm', 'w' => 52, 'h' => 74],
+                                        ];
+                                    @endphp
+                                    @foreach($printSizes as $val => $opt)
+                                    <div class="col-6">
+                                        <div class="print-size-option {{ old('print_size') == $val ? 'selected' : '' }}"
+                                             data-value="{{ $val }}" onclick="selectPrintSize(this)">
+                                            <div class="print-size-paper" style="width:{{ $opt['w'] }}px;height:{{ $opt['h'] }}px;"></div>
+                                            <div class="print-size-label">{{ $opt['label'] }}</div>
+                                            <div class="print-size-desc">{{ $opt['desc'] }}</div>
+                                        </div>
+                                    </div>
                                     @endforeach
-                                </select>
-                                @error('print_size') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                </div>
+                                @error('print_size') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                             </div>
 
                             <div class="mb-3">
@@ -68,15 +83,15 @@
 
                     <div class="card border-0 shadow-sm mb-4">
                         <div class="card-header bg-transparent">
-                            <h6 class="card-title mb-0 fw-bold">Thumbnail <span class="text-muted fw-normal small">(opsional)</span></h6>
+                            <h6 class="card-title mb-0 fw-bold">Gambar Frame <span class="text-danger">*</span></h6>
                         </div>
                         <div class="card-body pt-2">
                             <div class="upload-zone" id="zone-thumbnail">
-                                <input type="file" id="input-thumbnail" name="thumbnail" accept="image/*">
+                                <input type="file" id="input-thumbnail" name="thumbnail" accept="image/*" required>
                                 <div class="zone-placeholder" id="ph-thumbnail">
                                     <i class="mdi mdi-image-plus"></i>
                                     <p>Klik atau seret</p>
-                                    <span>JPG, PNG, WebP — maks. 2 MB</span>
+                                    <span>JPG, PNG, WebP — maks. 10 MB</span>
                                 </div>
                                 <div class="zone-preview" id="prev-thumbnail">
                                     <img id="prev-thumbnail-img" src="" alt="">
@@ -97,70 +112,12 @@
                     </div>
                 </div>
 
-                {{-- ── RIGHT: Fabric.js Editor ── --}}
-                <div class="col-lg-8">
-                    <div class="card border-0 shadow-sm overflow-hidden">
-
-                        {{-- Toolbar --}}
-                        <div class="editor-toolbar">
-                            {{-- Frame file picker --}}
-                            <div style="position:relative; display:inline-block; overflow:hidden;">
-                                <input type="file" id="input-frame" name="frame" accept="image/png,image/webp"
-                                    style="position:absolute;inset:0;opacity:0;cursor:pointer;z-index:2;">
-                                <button type="button" class="btn btn-primary btn-sm waves-effect">
-                                    <i class="mdi mdi-image-frame me-1"></i> Upload Frame
-                                </button>
-                            </div>
-                            <span id="frame-filename" class="text-muted font-size-12 text-truncate" style="max-width:140px;">
-                                Belum ada file
-                            </span>
-
-                            <div class="vr mx-1"></div>
-
-                            {{-- Mode buttons --}}
-                            <button type="button" class="btn btn-sm btn-outline-secondary waves-effect mode-btn active"
-                                data-mode="draw" onclick="setMode('draw')" title="Mode Gambar: klik+seret untuk tambah slot">
-                                <i class="mdi mdi-pencil-box-outline me-1"></i> Gambar Slot
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary waves-effect mode-btn"
-                                data-mode="select" onclick="setMode('select')" title="Mode Pilih: drag & resize slot yang ada">
-                                <i class="mdi mdi-cursor-move me-1"></i> Pilih / Pindah
-                            </button>
-
-                            <div class="vr mx-1"></div>
-
-                            {{-- Actions --}}
-                            <button type="button" class="btn btn-sm btn-outline-danger waves-effect" onclick="deleteSelected()" title="Hapus slot yang dipilih">
-                                <i class="mdi mdi-trash-can-outline"></i>
-                            </button>
-                            <button type="button" class="btn btn-sm btn-soft-danger waves-effect" onclick="clearAllSlots()" title="Hapus semua slot">
-                                <i class="mdi mdi-delete-sweep-outline me-1"></i> Reset
-                            </button>
-
-                            <span id="slot-count-badge" class="ms-auto badge bg-warning text-dark font-size-13 px-3">0 slot</span>
-                        </div>
-
-                        @error('frame')
-                            <div class="px-3 pt-2 text-danger small">{{ $message }}</div>
-                        @enderror
-
-                        {{-- Canvas area --}}
-                        <div id="fabric-canvas-wrapper">
-                            <div id="editor-placeholder">
-                                <i class="mdi mdi-image-frame"></i>
-                                <p>Upload frame PNG/WebP untuk mulai.<br>
-                                   Kemudian <strong style="color:#f9c846;">klik + seret</strong> untuk menggambar posisi slot foto.</p>
-                            </div>
-                            <div id="slot-labels-container"></div>
-                            <canvas id="fabric-canvas"></canvas>
-                        </div>
-
-                        <div class="editor-tips">
-                            <span><i class="mdi mdi-pencil-box-outline me-1 text-primary"></i><b>Mode Gambar:</b> klik+seret → slot baru</span>
-                            <span><i class="mdi mdi-cursor-move me-1 text-success"></i><b>Mode Pilih:</b> drag/resize slot, Delete → hapus</span>
-                            <span><i class="mdi mdi-ruler me-1 text-warning"></i>Koordinat disimpan dalam piksel asli frame</span>
-                        </div>
-                    </div>
+                {{-- ── RIGHT: Slot Position Editor ── --}}
+                <div class="col-lg-6">
+                    @include('templates._slot-editor')
+                    @error('slot_positions')
+                        <div class="alert alert-danger mt-3 mb-0">{{ $message }}</div>
+                    @enderror
                 </div>
 
             </div>
@@ -170,29 +127,17 @@
 @endsection
 
 @push('scripts')
-<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 @include('templates._upload-scripts')
-@include('templates._slot-scripts')
 <script>
+    function selectPrintSize(el) {
+        document.querySelectorAll('.print-size-option').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        var input = document.getElementById('print-size-value');
+        input.value = el.dataset.value;
+        input.dispatchEvent(new Event('change'));
+    }
+
     // Init thumbnail zone
     initZone('zone-thumbnail', 'input-thumbnail', 'prev-thumbnail', 'prev-thumbnail-img', 'clear-thumbnail', 'ph-thumbnail');
-
-    // Init Fabric editor
-    editorInit('fabric-canvas');
-
-    // Frame file picker
-    document.getElementById('input-frame').addEventListener('change', function () {
-        var file = this.files[0];
-        if (!file) return;
-        document.getElementById('frame-filename').textContent = file.name;
-        var reader = new FileReader();
-        reader.onload = function (e) { editorLoadFrame(e.target.result); };
-        reader.readAsDataURL(file);
-    });
-
-    // Sync JSON on submit
-    document.getElementById('tmpl-form').addEventListener('submit', function () {
-        _syncJson();
-    });
 </script>
 @endpush

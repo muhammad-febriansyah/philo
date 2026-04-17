@@ -12,8 +12,8 @@ use Illuminate\View\View;
 class GeneralSettingController extends Controller
 {
     private array $keys = [
-        'site_name', 'site_description', 'logo_path', 'favicon_path', 'primary_color',
-        'instagram_url', 'tiktok_url', 'whatsapp_number', 'footer_text',
+        'site_name', 'site_description', 'logo_path', 'favicon_path',
+        'instagram_url', 'facebook_url', 'x_url', 'tiktok_url', 'whatsapp_number', 'footer_text', 'google_maps_embed',
         'booth_countdown_seconds', 'booth_idle_timeout_seconds',
         'print_enabled', 'print_dpi', 'print_default_size',
     ];
@@ -30,13 +30,15 @@ class GeneralSettingController extends Controller
         $request->validate([
             'site_name'               => ['required', 'string', 'max:100'],
             'site_description'        => ['nullable', 'string', 'max:255'],
-            'primary_color'           => ['nullable', 'string', 'max:20'],
             'logo'                    => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:2048'],
             'favicon'                 => ['nullable', 'image', 'mimes:jpg,jpeg,png,ico,svg', 'max:512'],
             'instagram_url'           => ['nullable', 'url', 'max:255'],
+            'facebook_url'            => ['nullable', 'url', 'max:255'],
+            'x_url'                   => ['nullable', 'url', 'max:255'],
             'tiktok_url'              => ['nullable', 'url', 'max:255'],
             'whatsapp_number'         => ['nullable', 'string', 'max:20'],
             'footer_text'             => ['nullable', 'string', 'max:255'],
+            'google_maps_embed'       => ['nullable', 'string', 'max:5000'],
             'booth_countdown_seconds' => ['required', 'integer', 'min:1', 'max:10'],
             'booth_idle_timeout_seconds' => ['required', 'integer', 'min:10', 'max:300'],
             'print_enabled'           => ['boolean'],
@@ -75,8 +77,8 @@ class GeneralSettingController extends Controller
         }
 
         $textKeys = [
-            'site_name', 'site_description', 'primary_color',
-            'instagram_url', 'tiktok_url', 'whatsapp_number', 'footer_text',
+            'site_name', 'site_description',
+            'instagram_url', 'facebook_url', 'x_url', 'tiktok_url', 'whatsapp_number', 'footer_text', 'google_maps_embed',
             'booth_countdown_seconds', 'booth_idle_timeout_seconds',
             'print_dpi', 'print_default_size',
         ];
