@@ -183,6 +183,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('reports/revenue/export-excel', [ReportController::class, 'exportExcel'])->name('reports.revenue.export.excel');
     Route::get('reports/revenue/export-pdf', [ReportController::class, 'exportPdf'])->name('reports.revenue.export.pdf');
 
+    // Printer (admin & cabang) — controller membatasi cabang ke printer cabangnya sendiri
+    Route::get('printers/scan', [PrinterController::class, 'scan'])->name('printers.scan');
+    Route::post('printers/{printer}/test', [PrinterController::class, 'test'])->name('printers.test');
+    Route::resource('printers', PrinterController::class)->except(['show']);
+
     // Admin only
     Route::middleware('admin')->group(function () {
         Route::resource('branches', BranchController::class);
@@ -216,9 +221,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('settings/payment', [PaymentSettingController::class, 'update'])->name('settings.payment.update');
         Route::get('settings/booth', [BoothSettingController::class, 'edit'])->name('settings.booth');
         Route::put('settings/booth', [BoothSettingController::class, 'update'])->name('settings.booth.update');
-        Route::get('printers/scan', [PrinterController::class, 'scan'])->name('printers.scan');
-        Route::post('printers/{printer}/test', [PrinterController::class, 'test'])->name('printers.test');
-        Route::resource('printers', PrinterController::class)->except(['show']);
         Route::get('settings/email', [EmailSettingController::class, 'edit'])->name('settings.email');
         Route::put('settings/email', [EmailSettingController::class, 'update'])->name('settings.email.update');
         Route::post('settings/email/test', [EmailSettingController::class, 'test'])->name('settings.email.test');
