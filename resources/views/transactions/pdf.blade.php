@@ -228,6 +228,9 @@
                     <th>Order ID</th>
                     <th>Cabang</th>
                     <th>Paket</th>
+                    <th class="text-center">Cetak</th>
+                    <th>Voucher</th>
+                    <th class="text-right">Diskon</th>
                     <th class="text-right">Total</th>
                     <th class="text-center">Status</th>
                     <th>Metode</th>
@@ -237,11 +240,17 @@
             </thead>
             <tbody>
                 @forelse($transactions as $i => $trx)
+                @php
+                    $totalPrints = 1 + (int) ($trx->extra_prints ?? 0);
+                @endphp
                 <tr>
                     <td class="text-center text-muted">{{ $i + 1 }}</td>
                     <td class="fw-bold" style="font-size:9px;">{{ $trx->order_id }}</td>
                     <td>{{ $trx->branch?->name ?? '-' }}</td>
                     <td>{{ $trx->package?->name ?? '-' }}</td>
+                    <td class="text-center">{{ $totalPrints }}</td>
+                    <td style="font-size:9px;">{{ $trx->voucher?->code ?? '-' }}</td>
+                    <td class="text-right">{{ $trx->discount_amount > 0 ? 'Rp '.number_format($trx->discount_amount, 0, ',', '.') : '-' }}</td>
                     <td class="text-right fw-bold">Rp {{ number_format($trx->amount, 0, ',', '.') }}</td>
                     <td class="text-center">
                         <span class="badge badge-{{ $trx->status }}">{{ strtoupper($trx->status) }}</span>
@@ -252,7 +261,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="9" class="text-center text-muted" style="padding:20px;">Tidak ada data transaksi.</td>
+                    <td colspan="12" class="text-center text-muted" style="padding:20px;">Tidak ada data transaksi.</td>
                 </tr>
                 @endforelse
             </tbody>

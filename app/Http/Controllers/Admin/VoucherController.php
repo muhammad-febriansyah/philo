@@ -8,7 +8,9 @@ use App\Http\Requests\StoreVoucherRequest;
 use App\Http\Requests\UpdateVoucherRequest;
 use App\Models\Branch;
 use App\Models\Package;
+use App\Models\Setting;
 use App\Models\Voucher;
+use App\Services\ThermalPrinterService;
 use BaconQrCode\Renderer\Color\Rgb;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
@@ -21,6 +23,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Throwable;
 use Yajra\DataTables\Facades\DataTables;
 
 class VoucherController extends Controller
@@ -110,9 +113,9 @@ class VoucherController extends Controller
                 $copyBtn = '<button type="button" class="btn btn-sm btn-light btn-copy me-1" data-code="'.e($v->code).'" title="Salin kode">
                     <i class="fas fa-copy"></i>
                 </button>';
-                $printBtn = '<a href="'.route('vouchers.print', $v).'" target="_blank" rel="noopener" class="btn btn-sm btn-info me-1" title="Print thermal">
+                $printBtn = '<button type="button" class="btn btn-sm btn-info me-1 btn-print" data-id="'.$v->id.'" title="Print thermal">
                     <i class="fas fa-print"></i>
-                </a>';
+                </button>';
                 $editBtn = '<a href="'.route('vouchers.edit', $v).'" class="btn btn-sm btn-warning me-1" title="Edit">
                     <i class="fas fa-pen"></i>
                 </a>';
@@ -185,6 +188,110 @@ class VoucherController extends Controller
         return view('vouchers.print', [
             'vouchers' => collect([$this->decoratePrintableVoucher($voucher)]),
             'printTitle' => 'Print Voucher Thermal',
+        ]);
+    }
+
+    /**
+     * Return printable voucher data as JSON for the thermal printer JS helper.
+     */
+    public function printPayload(Voucher $voucher): JsonResponse
+    {
+        return response()->json($this->buildThermalPayload($voucher));
+    }
+
+    public function printThermal(Request $request, Voucher $voucher, ThermalPrinterService $printer): JsonResponse
+    {
+        $branch = $this->resolvePrintBranch($request);
+        if (! $branch instanceof Branch) {
+            return $branch;
+        }
+
+        try {
+            $printer->printVoucher($this->buildThermalPayload($voucher), $branch);
+        } catch (Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'message' => 'Voucher '.$voucher->code.' terkirim ke printer cabang '.$branch->name.'.',
+            'count' => 1,
+        ]);
+    }
+
+    public function bulkPrintThermal(Request $request, ThermalPrinterService $printer): JsonResponse
+    {
+        $validated = $request->validate([
+            'voucher_ids' => ['required', 'array', 'min:1'],
+            'voucher_ids.*' => ['integer', 'exists:vouchers,id'],
+        ], [
+            'voucher_ids.required' => 'Pilih minimal satu voucher untuk dicetak.',
+        ]);
+
+        $branch = $this->resolvePrintBranch($request);
+        if (! $branch instanceof Branch) {
+            return $branch;
+        }
+
+        $payloads = Voucher::query()
+            ->whereIn('id', $validated['voucher_ids'])
+            ->orderBy('id')
+            ->get()
+            ->map(fn (Voucher $voucher) => $this->buildThermalPayload($voucher))
+            ->all();
+
+        try {
+            $count = $printer->printVouchers($payloads, $branch);
+        } catch (Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'message' => $count.' voucher terkirim ke printer cabang '.$branch->name.'.',
+            'count' => $count,
+        ]);
+    }
+
+    private function resolvePrintBranch(Request $request): Branch|JsonResponse
+    {
+        $user = $request->user();
+        $branchId = $user->branch_id ?? $request->integer('branch_id');
+
+        if (! $branchId) {
+            return response()->json([
+                'message' => 'Anda belum terhubung ke cabang. Hubungkan akun Anda ke cabang dulu.',
+            ], 422);
+        }
+
+        $branch = Branch::find($branchId);
+        if (! $branch) {
+            return response()->json(['message' => 'Cabang tidak ditemukan.'], 422);
+        }
+
+        return $branch;
+    }
+
+    /**
+     * Return an array of printable voucher payloads for bulk thermal printing.
+     */
+    public function bulkPrintPayload(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'voucher_ids' => ['required', 'array', 'min:1'],
+            'voucher_ids.*' => ['integer', 'exists:vouchers,id'],
+        ], [
+            'voucher_ids.required' => 'Pilih minimal satu voucher untuk dicetak.',
+        ]);
+
+        $vouchers = Voucher::query()
+            ->whereIn('id', $validated['voucher_ids'])
+            ->orderBy('id')
+            ->get()
+            ->map(fn (Voucher $voucher) => $this->buildThermalPayload($voucher))
+            ->values();
+
+        return response()->json([
+            'count' => $vouchers->count(),
+            'vouchers' => $vouchers,
         ]);
     }
 
@@ -261,6 +368,40 @@ class VoucherController extends Controller
         return [
             'packages' => Package::orderBy('name')->get(['id', 'name', 'price']),
             'branches' => Branch::orderBy('name')->get(['id', 'name', 'code']),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildThermalPayload(Voucher $voucher): array
+    {
+        $valueLabel = $voucher->type === Voucher::TYPE_PERCENTAGE
+            ? 'DISKON '.rtrim(rtrim(number_format((float) $voucher->value, 2, '.', ''), '0'), '.').'%'
+            : 'POTONGAN Rp '.number_format((float) $voucher->value, 0, ',', '.');
+
+        $validLabel = match (true) {
+            $voucher->valid_from && $voucher->valid_until => $voucher->valid_from->format('d/m/y').' - '.$voucher->valid_until->format('d/m/y'),
+            $voucher->valid_from && ! $voucher->valid_until => 'Sejak '.$voucher->valid_from->format('d/m/y'),
+            ! $voucher->valid_from && $voucher->valid_until => 'Hingga '.$voucher->valid_until->format('d/m/y'),
+            default => 'Tanpa batas waktu',
+        };
+
+        $maxUsesLabel = $voucher->max_uses
+            ? '1 dari '.$voucher->max_uses.' pemakaian'
+            : 'Tidak terbatas';
+
+        return [
+            'id' => $voucher->id,
+            'code' => $voucher->code,
+            'name' => $voucher->name,
+            'value_label' => $valueLabel,
+            'min_purchase_label' => $voucher->min_purchase !== null
+                ? 'Rp '.number_format((float) $voucher->min_purchase, 0, ',', '.')
+                : null,
+            'valid_label' => $validLabel,
+            'max_uses_label' => $maxUsesLabel,
+            'site_name' => (string) Setting::get('site_name', 'Philo Photobooth'),
         ];
     }
 

@@ -47,7 +47,8 @@
       "Bash(php *)",
       "Bash(grep *)",
       "Bash(xargs cat *)",
-      "WebFetch(domain:mailketing.co.id)"
+      "WebFetch(domain:mailketing.co.id)",
+      "Bash(lpstat -p)"
     ]
   },
   "enableAllProjectMcpServers": true,

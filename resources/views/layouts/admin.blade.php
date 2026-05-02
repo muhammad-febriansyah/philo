@@ -251,6 +251,13 @@
                             </li>
                             @endif
 
+                            <li>
+                                <a href="{{ route('printers.index') }}" class="waves-effect {{ request()->routeIs('printers.*') ? 'active' : '' }}">
+                                    <div class="d-inline-block icons-sm me-1"><i class="fas fa-print"></i></div>
+                                    <span>Printer</span>
+                                </a>
+                            </li>
+
                             {{-- ─── Laporan ─── --}}
                             <li class="menu-title">Laporan</li>
 

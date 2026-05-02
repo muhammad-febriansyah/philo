@@ -146,6 +146,7 @@
                             <tr><th width="130" class="text-muted fw-normal">Order ID</th><td class="fw-bold">: <span id="det-order-id"></span></td></tr>
                             <tr><th class="text-muted fw-normal">Cabang</th><td>: <span id="det-branch"></span></td></tr>
                             <tr><th class="text-muted fw-normal">Paket Foto</th><td>: <span id="det-package"></span></td></tr>
+                            <tr><th class="text-muted fw-normal">Jumlah Cetak</th><td>: <span id="det-prints"></span></td></tr>
                             <tr><th class="text-muted fw-normal">Status</th><td>: <span id="det-status"></span></td></tr>
                             <tr><th class="text-muted fw-normal">Waktu</th><td>: <span id="det-time"></span></td></tr>
                         </table>
@@ -153,7 +154,10 @@
                     <div class="col-md-6 mb-4 border-start border-light ps-md-4">
                         <h6 class="text-primary fw-bold text-uppercase font-size-12 mb-3">Rincian Pembayaran</h6>
                         <table class="table table-sm table-borderless mb-0">
-                            <tr><th width="130" class="text-muted fw-normal">Total Bayar</th><td class="text-primary fw-bold">: <span id="det-amount"></span></td></tr>
+                            <tr id="det-row-original" class="d-none"><th width="130" class="text-muted fw-normal">Harga Asli</th><td>: <span id="det-original" class="text-muted text-decoration-line-through"></span></td></tr>
+                            <tr id="det-row-voucher" class="d-none"><th class="text-muted fw-normal">Voucher</th><td>: <span id="det-voucher"></span></td></tr>
+                            <tr id="det-row-discount" class="d-none"><th class="text-muted fw-normal">Diskon</th><td class="text-success">: − <span id="det-discount"></span></td></tr>
+                            <tr><th class="text-muted fw-normal">Total Bayar</th><td class="text-primary fw-bold">: <span id="det-amount"></span></td></tr>
                             <tr><th class="text-muted fw-normal">Metode Pembayaran</th><td>: <span id="det-method"></span></td></tr>
                             <tr><th class="text-muted fw-normal">Ref Pembayaran</th><td>: <span id="det-ref" class="font-size-12"></span></td></tr>
                             <tr><th class="text-muted fw-normal">Waktu Bayar</th><td>: <span id="det-paid-at"></span></td></tr>
@@ -364,10 +368,42 @@ $(function () {
             var color = badges[data.status] || 'secondary';
             $('#det-status').html('<span class="badge bg-' + color + '">' + data.status.toUpperCase() + '</span>');
             
+            var totalPrints = 1 + (parseInt(data.extra_prints || 0, 10));
+            var printsText = totalPrints + ' lembar';
+            if (data.extra_prints > 0) {
+                printsText += ' (1 default + ' + data.extra_prints + ' tambahan)';
+            }
+            $('#det-prints').text(printsText);
+
             $('#det-amount').text('Rp ' + new Intl.NumberFormat('id-ID').format(data.amount));
             $('#det-method').text(data.payment_method ? data.payment_method.toUpperCase() : '-');
             $('#det-ref').text(data.duitku_reference || '-');
             $('#det-paid-at').text(data.paid_at ? moment(data.paid_at).format('DD/MM/YYYY HH:mm:ss') : '-');
+
+            if (data.voucher) {
+                $('#det-row-voucher').removeClass('d-none');
+                var label = data.voucher.code;
+                if (data.voucher.name) label += ' — ' + data.voucher.name;
+                $('#det-voucher').html('<code class="bg-warning bg-opacity-10 text-warning px-2 py-1 rounded">' + label + '</code>');
+
+                if (data.discount_amount && parseFloat(data.discount_amount) > 0) {
+                    $('#det-row-discount').removeClass('d-none');
+                    $('#det-discount').text('Rp ' + new Intl.NumberFormat('id-ID').format(parseFloat(data.discount_amount)));
+                } else {
+                    $('#det-row-discount').addClass('d-none');
+                }
+
+                if (data.original_amount && parseFloat(data.original_amount) > 0) {
+                    $('#det-row-original').removeClass('d-none');
+                    $('#det-original').text('Rp ' + new Intl.NumberFormat('id-ID').format(parseFloat(data.original_amount)));
+                } else {
+                    $('#det-row-original').addClass('d-none');
+                }
+            } else {
+                $('#det-row-voucher').addClass('d-none');
+                $('#det-row-discount').addClass('d-none');
+                $('#det-row-original').addClass('d-none');
+            }
             
             if (data.photo_session && data.photo_session.completed_at) {
                 $('#session-info').removeClass('d-none');

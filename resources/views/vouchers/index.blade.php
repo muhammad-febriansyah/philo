@@ -9,6 +9,32 @@
 @endsection
 
 @section('content')
+@php
+    $authUser = auth()->user();
+    $authBranch = $authUser?->branch;
+    $voucherPrinter = $authBranch
+        ? app(\App\Services\ThermalPrinterService::class)->printerFor($authBranch, \App\Models\Printer::PURPOSE_VOUCHER)
+        : null;
+    $printerReady = $voucherPrinter && $voucherPrinter->is_active;
+@endphp
+
+<div class="alert d-flex align-items-center gap-2 mb-3 {{ $printerReady ? 'alert-success' : 'alert-warning' }}" role="alert">
+    <i class="fas fa-print"></i>
+    <div class="flex-grow-1 small">
+        @if ($printerReady)
+            <strong>Printer voucher cabang {{ $authBranch->name }} aktif.</strong>
+            {{ strtoupper($voucherPrinter->connector) }} · <code>{{ $voucherPrinter->device }}</code>
+        @elseif (! $authBranch)
+            <strong>Akun Anda belum terhubung ke cabang.</strong> Hubungkan dulu akun ke cabang sebelum print.
+        @else
+            <strong>Cabang {{ $authBranch->name }} belum punya printer voucher.</strong> Tambahkan dulu di menu Printer.
+        @endif
+    </div>
+    <a href="{{ route('printers.index') }}" class="btn btn-sm btn-outline-dark">
+        <i class="fas fa-cog me-1"></i> Kelola Printer
+    </a>
+</div>
+
 <div class="row mb-3 g-3">
     <div class="col-md-3 col-sm-6">
         <div class="card border-0 shadow-sm h-100">
@@ -156,14 +182,36 @@
     </div>
 </div>
 
-<form method="POST" action="{{ route('vouchers.print.bulk') }}" id="bulk-print-form" target="_blank" class="d-none">
-    @csrf
-</form>
 @endsection
 
 @push('scripts')
 <script>
 $(function () {
+    var printerConfigured = @json($printerReady);
+
+    function csrfToken() {
+        return $('meta[name="csrf-token"]').attr('content') || '{{ csrf_token() }}';
+    }
+
+    async function postThermal(url, body) {
+        var res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+            body: body ? JSON.stringify(body) : undefined,
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok) {
+            throw new Error(data.message || ('HTTP ' + res.status));
+        }
+        return data;
+    }
+
     var table = $('#vouchers-table').DataTable({
         processing: true,
         serverSide: true,
@@ -224,32 +272,80 @@ $(function () {
         });
     });
 
-    $('#btn-bulk-print').on('click', function () {
-        var ids = $('.voucher-select:checked').map(function () {
-            return $(this).val();
-        }).get();
+    function ensurePrinterReady() {
+        if (!printerConfigured) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Printer belum siap',
+                html: 'Atur dulu printer voucher cabang Anda di <a href="{{ route('printers.index') }}">menu Printer</a>.',
+            });
+            return false;
+        }
+        return true;
+    }
 
+    $(document).on('click', '.btn-print', async function () {
+        if (!ensurePrinterReady()) return;
+        var $btn = $(this);
+        var id = $btn.data('id');
+        var originalHtml = $btn.html();
+        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+
+        try {
+            var url = '{{ url('vouchers') }}/' + id + '/print-thermal';
+            var data = await postThermal(url);
+            Swal.fire({
+                icon: 'success',
+                title: 'Voucher dicetak',
+                text: data.message,
+                timer: 1500,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end',
+            });
+        } catch (error) {
+            Swal.fire({ icon: 'error', title: 'Gagal print', text: error?.message || 'Terjadi kesalahan.' });
+        } finally {
+            $btn.prop('disabled', false).html(originalHtml);
+        }
+    });
+
+    $('#btn-bulk-print').on('click', async function () {
+        if (!ensurePrinterReady()) return;
+
+        var ids = $('.voucher-select:checked').map(function () { return $(this).val(); }).get();
         if (!ids.length) {
             Swal.fire({
                 icon: 'warning',
                 title: 'Belum ada voucher dipilih',
-                text: 'Pilih minimal satu voucher untuk bulk print.'
+                text: 'Pilih minimal satu voucher untuk bulk print.',
             });
             return;
         }
 
-        var $form = $('#bulk-print-form');
-        $form.find('input[name="voucher_ids[]"]').remove();
-
-        ids.forEach(function (id) {
-            $('<input>', {
-                type: 'hidden',
-                name: 'voucher_ids[]',
-                value: id
-            }).appendTo($form);
+        var confirmed = await Swal.fire({
+            title: 'Cetak ' + ids.length + ' voucher?',
+            text: 'Pastikan kertas thermal cukup di printer.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Cetak',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#C9A800',
         });
+        if (!confirmed.isConfirmed) return;
 
-        $form.trigger('submit');
+        var $btn = $(this);
+        var originalHtml = $btn.html();
+        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Mencetak...');
+
+        try {
+            var data = await postThermal('{{ route('vouchers.print.thermal.bulk') }}', { voucher_ids: ids });
+            Swal.fire({ icon: 'success', title: 'Selesai', text: data.message });
+        } catch (error) {
+            Swal.fire({ icon: 'error', title: 'Gagal bulk print', text: error?.message || 'Terjadi kesalahan.' });
+        } finally {
+            $btn.prop('disabled', false).html(originalHtml);
+        }
     });
 
     $(document).on('click', '.btn-delete', function () {

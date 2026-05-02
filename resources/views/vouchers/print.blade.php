@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $printTitle }}</title>
+    @php $embedded = request()->boolean('embedded'); @endphp
     <style>
         :root {
             --paper-width: 76mm;
@@ -176,10 +177,12 @@
     </style>
 </head>
 <body>
-    <div class="toolbar">
-        <button type="button" onclick="window.print()">Print Sekarang</button>
-        <a href="{{ route('vouchers.index') }}">Kembali ke Voucher</a>
-    </div>
+    @unless($embedded)
+        <div class="toolbar">
+            <button type="button" onclick="window.print()">Print Sekarang</button>
+            <a href="{{ route('vouchers.index') }}">Kembali ke Voucher</a>
+        </div>
+    @endunless
 
     <div class="print-list">
         @foreach($vouchers as $voucher)

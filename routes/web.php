@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\GeneralSettingController;
 use App\Http\Controllers\Admin\PackageController;
 use App\Http\Controllers\Admin\PaymentSettingController;
 use App\Http\Controllers\Admin\PhotoSessionController;
+use App\Http\Controllers\Admin\PrinterController;
 use App\Http\Controllers\Admin\RecaptchaSettingController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\StepController;
@@ -198,7 +199,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('vouchers/bulk', [VoucherController::class, 'bulkCreate'])->name('vouchers.bulk.create');
         Route::post('vouchers/bulk', [VoucherController::class, 'bulkStore'])->name('vouchers.bulk.store');
         Route::post('vouchers/print', [VoucherController::class, 'bulkPrint'])->name('vouchers.print.bulk');
+        Route::post('vouchers/print-payload', [VoucherController::class, 'bulkPrintPayload'])->name('vouchers.print.payload.bulk');
+        Route::post('vouchers/print-thermal', [VoucherController::class, 'bulkPrintThermal'])->name('vouchers.print.thermal.bulk');
         Route::get('vouchers/{voucher}/print', [VoucherController::class, 'print'])->name('vouchers.print');
+        Route::get('vouchers/{voucher}/print-payload', [VoucherController::class, 'printPayload'])->name('vouchers.print.payload');
+        Route::post('vouchers/{voucher}/print-thermal', [VoucherController::class, 'printThermal'])->name('vouchers.print.thermal');
         Route::get('vouchers-data', [VoucherController::class, 'data'])->name('vouchers.data');
         Route::resource('vouchers', VoucherController::class)->except(['show']);
 
@@ -211,6 +216,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('settings/payment', [PaymentSettingController::class, 'update'])->name('settings.payment.update');
         Route::get('settings/booth', [BoothSettingController::class, 'edit'])->name('settings.booth');
         Route::put('settings/booth', [BoothSettingController::class, 'update'])->name('settings.booth.update');
+        Route::get('printers/scan', [PrinterController::class, 'scan'])->name('printers.scan');
+        Route::post('printers/{printer}/test', [PrinterController::class, 'test'])->name('printers.test');
+        Route::resource('printers', PrinterController::class)->except(['show']);
         Route::get('settings/email', [EmailSettingController::class, 'edit'])->name('settings.email');
         Route::put('settings/email', [EmailSettingController::class, 'update'])->name('settings.email.update');
         Route::post('settings/email/test', [EmailSettingController::class, 'test'])->name('settings.email.test');

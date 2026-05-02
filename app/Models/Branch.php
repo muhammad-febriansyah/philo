@@ -30,4 +30,9 @@ class Branch extends Model
     {
         return $this->hasMany(PhotoSession::class);
     }
+
+    public function printers(): HasMany
+    {
+        return $this->hasMany(Printer::class);
+    }
 }

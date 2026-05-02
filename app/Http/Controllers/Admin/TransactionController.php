@@ -37,7 +37,7 @@ class TransactionController extends Controller
         $user = auth()->user();
         $forcedBranchId = $user->isCabang() ? $user->branch_id : null;
 
-        $query = Transaction::with(['branch', 'package'])
+        $query = Transaction::with(['branch', 'package', 'voucher:id,code,name'])
             ->when($forcedBranchId, fn ($q) => $q->where('branch_id', $forcedBranchId));
 
         if (! $forcedBranchId && $request->filled('branch_id')) {
@@ -60,7 +60,24 @@ class TransactionController extends Controller
             ->addIndexColumn()
             ->addColumn('branch_name', fn (Transaction $transaction) => $transaction->branch->name ?? '-')
             ->addColumn('package_name', fn (Transaction $transaction) => $transaction->package->name ?? '-')
-            ->addColumn('amount_formatted', fn (Transaction $transaction) => 'Rp '.number_format($transaction->amount, 0, ',', '.'))
+            ->addColumn('amount_formatted', function (Transaction $transaction) {
+                $amount = 'Rp '.number_format($transaction->amount, 0, ',', '.');
+                $badges = '';
+
+                if ($transaction->voucher_id) {
+                    $badges .= ' <span class="badge bg-soft-warning text-warning ms-1" title="Diskon voucher">
+                        <i class="mdi mdi-ticket-percent-outline"></i>
+                    </span>';
+                }
+
+                if ((int) $transaction->extra_prints > 0) {
+                    $badges .= ' <span class="badge bg-soft-info text-info ms-1" title="Termasuk '.((int) $transaction->extra_prints).' cetak tambahan">
+                        +'.((int) $transaction->extra_prints).' cetak
+                    </span>';
+                }
+
+                return $amount.$badges;
+            })
             ->addColumn('status_badge', function (Transaction $transaction) {
                 $badges = [
                     'pending' => 'bg-warning',
@@ -80,7 +97,7 @@ class TransactionController extends Controller
             })
             ->filterColumn('branch_name', fn ($q, $keyword) => $q->whereHas('branch', fn ($b) => $b->where('name', 'like', "%{$keyword}%")))
             ->filterColumn('package_name', fn ($q, $keyword) => $q->whereHas('package', fn ($p) => $p->where('name', 'like', "%{$keyword}%")))
-            ->rawColumns(['status_badge', 'actions'])
+            ->rawColumns(['amount_formatted', 'status_badge', 'actions'])
             ->make(true);
     }
 
@@ -88,7 +105,7 @@ class TransactionController extends Controller
     {
         $this->ensureTransactionBelongsToCurrentBranch($transaction);
 
-        return response()->json($transaction->load(['branch', 'package', 'photoSession']));
+        return response()->json($transaction->load(['branch', 'package', 'photoSession', 'voucher:id,code,name,type,value']));
     }
 
     public function exportExcel(Request $request): BinaryFileResponse
@@ -109,7 +126,7 @@ class TransactionController extends Controller
         $user = auth()->user();
         $branchId = $user->isCabang() ? $user->branch_id : ($request->filled('branch_id') ? (int) $request->branch_id : null);
 
-        $query = Transaction::with(['branch', 'package'])
+        $query = Transaction::with(['branch', 'package', 'voucher:id,code'])
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->when($request->filled('start_date'), fn ($q) => $q->whereDate('created_at', '>=', $request->start_date))

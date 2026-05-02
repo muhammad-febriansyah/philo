@@ -42,6 +42,8 @@ class ReportController extends Controller
         }
 
         $totalRevenue = (clone $paidTransactions)->sum('amount');
+        $totalDiscount = (int) (clone $paidTransactions)->sum('discount_amount');
+        $voucherTransactions = (clone $paidTransactions)->whereNotNull('voucher_id')->count();
         $thisMonthRevenue = (clone $paidTransactions)
             ->whereMonth('paid_at', now()->month)
             ->whereYear('paid_at', now()->year)
@@ -93,6 +95,8 @@ class ReportController extends Controller
             'thisMonthRevenue',
             'todayRevenue',
             'totalRevenue',
+            'totalDiscount',
+            'voucherTransactions',
             'year',
             'lastMonthRevenue',
             'yesterdayRevenue',
@@ -112,7 +116,7 @@ class ReportController extends Controller
         $user = auth()->user();
         $forcedBranchId = $user->isCabang() ? $user->branch_id : null;
 
-        $query = Transaction::with(['branch', 'package'])
+        $query = Transaction::with(['branch', 'package', 'voucher:id,code'])
             ->where('status', 'paid')
             ->when($forcedBranchId ?? $request->integer('branch_id'), fn ($builder, $branchId) => $builder->where('branch_id', $branchId));
 
@@ -126,9 +130,27 @@ class ReportController extends Controller
 
         return DataTables::of($query)
             ->editColumn('paid_at', fn ($row) => $row->paid_at?->format('d/m/Y H:i') ?? '-')
-            ->editColumn('amount', fn ($row) => 'Rp '.number_format($row->amount, 0, ',', '.'))
+            ->editColumn('amount', function ($row) {
+                $amount = 'Rp '.number_format($row->amount, 0, ',', '.');
+                $badges = '';
+
+                if ($row->voucher_id) {
+                    $badges .= ' <span class="badge bg-soft-warning text-warning ms-1" title="Diskon voucher '.e($row->voucher?->code ?? '').'">
+                        <i class="mdi mdi-ticket-percent-outline"></i>
+                    </span>';
+                }
+
+                if ((int) $row->extra_prints > 0) {
+                    $badges .= ' <span class="badge bg-soft-info text-info ms-1" title="Termasuk '.((int) $row->extra_prints).' cetak tambahan">
+                        +'.((int) $row->extra_prints).'
+                    </span>';
+                }
+
+                return $amount.$badges;
+            })
             ->addColumn('branch_name', fn ($row) => $row->branch?->name ?? '-')
             ->addColumn('package_name', fn ($row) => $row->package?->name ?? '-')
+            ->rawColumns(['amount'])
             ->make(true);
     }
 
@@ -154,7 +176,7 @@ class ReportController extends Controller
         $branchId = $forcedBranchId ?? $request->integer('branch_id') ?: null;
         $year = $request->integer('year', now()->year) ?: null;
 
-        $query = Transaction::with(['branch', 'package'])
+        $query = Transaction::with(['branch', 'package', 'voucher:id,code'])
             ->where('status', 'paid')
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->when($request->start_date, fn ($q) => $q->whereDate('paid_at', '>=', $request->start_date))
@@ -164,12 +186,14 @@ class ReportController extends Controller
 
         $transactions = $query->get();
         $totalRevenue = $transactions->sum('amount');
+        $totalDiscount = (int) $transactions->sum('discount_amount');
         $filterBranch = $branchId ? Branch::find($branchId)?->name : null;
         $siteName = Setting::get('site_name', config('app.name'));
 
         $pdf = Pdf::loadView('reports.revenue-pdf', [
             'transactions' => $transactions,
             'totalRevenue' => $totalRevenue,
+            'totalDiscount' => $totalDiscount,
             'filterBranch' => $filterBranch,
             'filterStartDate' => $request->start_date,
             'filterEndDate' => $request->end_date,
@@ -207,6 +231,8 @@ class ReportController extends Controller
 
                 $branch->period_revenue = (int) (clone $periodQuery)->sum('amount');
                 $branch->period_transactions = (int) (clone $periodQuery)->count();
+                $branch->period_discount = (int) (clone $periodQuery)->sum('discount_amount');
+                $branch->period_vouchers_used = (int) (clone $periodQuery)->whereNotNull('voucher_id')->count();
                 $branch->period_avg = $branch->period_transactions > 0
                     ? (int) round($branch->period_revenue / $branch->period_transactions)
                     : 0;

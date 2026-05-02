@@ -296,23 +296,30 @@
                 <thead>
                     <tr>
                         <th class="text-center" style="width: 28px;">No.</th>
-                        <th style="width: 145px;">ID Transaksi</th>
-                        <th style="width: 90px;">Tanggal</th>
+                        <th style="width: 130px;">ID Transaksi</th>
+                        <th style="width: 78px;">Tanggal</th>
                         <th>Cabang</th>
                         <th>Paket</th>
+                        <th class="text-center" style="width: 38px;">Cetak</th>
+                        <th style="width: 70px;">Voucher</th>
+                        <th class="text-right" style="width: 70px;">Diskon</th>
                         <th>Metode</th>
-                        <th class="text-center" style="width: 45px;">Status</th>
-                        <th class="text-right" style="width: 90px;">Jumlah (Rp)</th>
+                        <th class="text-center" style="width: 42px;">Status</th>
+                        <th class="text-right" style="width: 88px;">Jumlah (Rp)</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($transactions as $i => $tx)
+                        @php $totalPrints = 1 + (int) ($tx->extra_prints ?? 0); @endphp
                         <tr>
                             <td class="no-col">{{ $i + 1 }}</td>
                             <td class="mono">{{ $tx->order_id }}</td>
                             <td>{{ $tx->paid_at?->format('d/m/Y') ?? '-' }}<br><span style="color:#94a3b8;font-size:8.5px;">{{ $tx->paid_at?->format('H:i') }}</span></td>
                             <td>{{ $tx->branch?->name ?? '-' }}</td>
                             <td>{{ $tx->package?->name ?? '-' }}</td>
+                            <td class="text-center">{{ $totalPrints }}</td>
+                            <td class="mono" style="font-size:8.5px;">{{ $tx->voucher?->code ?? '-' }}</td>
+                            <td class="text-right">{{ $tx->discount_amount > 0 ? number_format($tx->discount_amount, 0, ',', '.') : '-' }}</td>
                             <td>{{ strtoupper($tx->payment_method ?? '-') }}</td>
                             <td class="text-center"><span class="badge badge-paid">PAID</span></td>
                             <td class="amount">{{ number_format($tx->amount, 0, ',', '.') }}</td>
@@ -321,7 +328,9 @@
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td colspan="7" style="font-size:11px; padding-left: 12px;">TOTAL REVENUE</td>
+                        <td colspan="7" style="font-size:11px; padding-left: 12px;">TOTAL DISKON</td>
+                        <td class="text-right" style="font-weight:700;color:#92400e;">{{ number_format($totalDiscount, 0, ',', '.') }}</td>
+                        <td colspan="2" style="font-size:11px; padding-left: 12px;">TOTAL REVENUE</td>
                         <td class="text-right">Rp {{ number_format($totalRevenue, 0, ',', '.') }}</td>
                     </tr>
                 </tfoot>

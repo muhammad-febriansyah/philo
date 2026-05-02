@@ -168,6 +168,13 @@
                                         </td>
                                         <td class="text-end fw-bold">
                                             Rp {{ number_format($branch->period_revenue, 0, ',', '.') }}
+                                            @if ($branch->period_discount > 0)
+                                                <div class="small text-warning fw-normal mt-1" style="font-size:11px;">
+                                                    <i class="mdi mdi-ticket-percent-outline"></i>
+                                                    Diskon Rp {{ number_format($branch->period_discount, 0, ',', '.') }}
+                                                    · {{ $branch->period_vouchers_used }} voucher
+                                                </div>
+                                            @endif
                                         </td>
                                         <td>{!! $growthBadge($branch->growth) !!}</td>
                                         <td class="text-center">

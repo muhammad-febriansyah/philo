@@ -26,7 +26,7 @@ class RevenueExport implements FromQuery, ShouldAutoSize, WithColumnFormatting, 
 
     public function query()
     {
-        return Transaction::with(['branch', 'package'])
+        return Transaction::with(['branch', 'package', 'voucher:id,code'])
             ->where('status', 'paid')
             ->when($this->branchId, fn ($q) => $q->where('branch_id', $this->branchId))
             ->when($this->startDate, fn ($q) => $q->whereDate('paid_at', '>=', $this->startDate))
@@ -48,6 +48,9 @@ class RevenueExport implements FromQuery, ShouldAutoSize, WithColumnFormatting, 
             'Tanggal Bayar',
             'Cabang',
             'Paket',
+            'Cetak',
+            'Voucher',
+            'Diskon (Rp)',
             'Metode Pembayaran',
             'Status',
             'Jumlah (Rp)',
@@ -60,12 +63,17 @@ class RevenueExport implements FromQuery, ShouldAutoSize, WithColumnFormatting, 
         static $i = 0;
         $i++;
 
+        $totalPrints = 1 + (int) ($row->extra_prints ?? 0);
+
         return [
             $i,
             $row->order_id,
             $row->paid_at?->format('d/m/Y H:i') ?? '-',
             $row->branch?->name ?? '-',
             $row->package?->name ?? '-',
+            $totalPrints.' lembar',
+            $row->voucher?->code ?? '-',
+            (int) ($row->discount_amount ?? 0),
             $row->payment_method ?? '-',
             'PAID',
             $row->amount,
@@ -76,6 +84,7 @@ class RevenueExport implements FromQuery, ShouldAutoSize, WithColumnFormatting, 
     {
         return [
             'H' => '#,##0',
+            'K' => '#,##0',
         ];
     }
 
@@ -84,7 +93,7 @@ class RevenueExport implements FromQuery, ShouldAutoSize, WithColumnFormatting, 
         $lastRow = $sheet->getHighestRow();
 
         // Header row styling
-        $sheet->getStyle('A1:H1')->applyFromArray([
+        $sheet->getStyle('A1:K1')->applyFromArray([
             'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF'], 'size' => 11],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1d4ed8']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
@@ -94,18 +103,20 @@ class RevenueExport implements FromQuery, ShouldAutoSize, WithColumnFormatting, 
         // Data rows alternating color + border
         for ($row = 2; $row <= $lastRow; $row++) {
             $fill = $row % 2 === 0 ? 'FFf0f4ff' : 'FFFFFFFF';
-            $sheet->getStyle("A{$row}:H{$row}")->applyFromArray([
+            $sheet->getStyle("A{$row}:K{$row}")->applyFromArray([
                 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $fill]],
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFe2e8f0']]],
                 'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
             ]);
         }
 
-        // Amount column right-align
+        // Amount + Diskon columns right-align
         $sheet->getStyle("H2:H{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        $sheet->getStyle("K2:K{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
 
-        // No. column center
+        // No. + Cetak column center
         $sheet->getStyle("A2:A{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle("F2:F{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
         // Row height
         $sheet->getDefaultRowDimension()->setRowHeight(22);
