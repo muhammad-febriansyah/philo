@@ -10,62 +10,153 @@
 
 @section('content')
 
-    {{-- Hero Section --}}
+    {{-- ─────────── Hero: personalized greeting + branch context ─────────── --}}
     <div class="row">
         <div class="col-12">
             <div class="card border-0 overflow-hidden dashboard-hero mb-4">
-                <div class="hero-deco-circle hero-deco-circle-1"></div>
-                <div class="hero-deco-circle hero-deco-circle-2"></div>
-                <div class="hero-deco-circle hero-deco-circle-3"></div>
+                <div class="hero-glow"></div>
                 <div class="card-body p-4 p-lg-5">
                     <div class="row align-items-center gy-4">
                         <div class="col-lg-7">
-                            <span class="badge hero-badge rounded-pill text-white px-3 py-2 mb-3">
-                                <i class="mdi mdi-store me-1"></i> {{ $branch?->code ?? 'Cabang' }}
-                                <span class="ms-2 opacity-60">|</span>
-                                <span class="ms-2 {{ $branch?->is_active ? 'text-success-emphasis' : 'text-danger-emphasis' }}">
-                                    {{ $branch?->is_active ? 'Aktif' : 'Non-Aktif' }}
+                            <span class="badge hero-badge rounded-pill px-3 py-2 mb-3">
+                                <i class="mdi mdi-store-outline me-1"></i> {{ $branch?->code ?? 'CABANG' }}
+                                <span class="hero-badge-divider"></span>
+                                <span class="hero-badge-status {{ $branch?->is_active ? 'live' : 'down' }}">
+                                    <span class="hero-status-dot"></span> {{ $branch?->is_active ? 'Online' : 'Offline' }}
                                 </span>
                             </span>
                             <h3 class="text-white mb-2">Halo, {{ auth()->user()->name }}.</h3>
-                            <p class="text-white text-opacity-75 mb-1">
-                                <i class="mdi mdi-map-marker-outline me-1"></i> {{ $branch?->address ?? '-' }}
+                            <p class="hero-sub mb-3">
+                                Berikut kondisi <strong class="text-white">{{ $branch?->name ?? 'cabang Anda' }}</strong> hari ini.
                             </p>
-                            <p class="text-white text-opacity-60 mb-4" style="font-size: .85rem;">
-                                <i class="mdi mdi-phone-outline me-1"></i> {{ $branch?->phone ?? '-' }}
-                            </p>
-                            <div class="d-flex flex-wrap gap-2">
-                                <a href="{{ route('transactions.index') }}" class="btn btn-light btn-sm">
-                                    <i class="mdi mdi-credit-card-outline me-1"></i> Transaksi
-                                </a>
-                                <a href="{{ route('photo-sessions.index') }}" class="btn btn-outline-light btn-sm">
-                                    <i class="mdi mdi-camera-outline me-1"></i> Sesi Foto
-                                </a>
-                                <a href="{{ route('reports.revenue') }}" class="btn btn-outline-light btn-sm">
-                                    <i class="mdi mdi-chart-line me-1"></i> Laporan Revenue
-                                </a>
+                            <div class="d-flex flex-wrap align-items-center gap-3 hero-meta">
+                                <span><i class="mdi mdi-map-marker-outline me-1"></i> {{ $branch?->address ?? '-' }}</span>
+                                @if($branch?->phone)
+                                    <span><i class="mdi mdi-phone-outline me-1"></i> {{ $branch->phone }}</span>
+                                @endif
                             </div>
                         </div>
                         <div class="col-lg-5">
                             <div class="hero-panel ms-lg-auto">
                                 <div class="hero-panel-item">
-                                    <span class="hero-panel-label">Total Revenue (All Time)</span>
-                                    <strong>Rp {{ number_format($totalAllTimeRevenue, 0, ',', '.') }}</strong>
+                                    <span class="hero-panel-label">Revenue Hari Ini</span>
+                                    <strong>Rp {{ number_format($todayRevenue, 0, ',', '.') }}</strong>
                                 </div>
                                 <div class="hero-panel-item">
-                                    <span class="hero-panel-label">Revenue Minggu Ini</span>
-                                    <strong>Rp {{ number_format($thisWeekRevenue, 0, ',', '.') }}</strong>
-                                </div>
-                                <div class="hero-panel-item">
-                                    <span class="hero-panel-label">Rata-rata Nilai Transaksi</span>
-                                    <strong>Rp {{ number_format($avgTransactionValue, 0, ',', '.') }}</strong>
+                                    <span class="hero-panel-label">Sesi Hari Ini</span>
+                                    <strong>{{ number_format($todaySessionsCount) }} <small class="text-white-50">/ {{ number_format($todayCompletedSessions) }} selesai</small></strong>
                                 </div>
                                 <div class="hero-panel-item">
                                     <span class="hero-panel-label">Pending Payment</span>
                                     <strong>{{ number_format($pendingTransactions) }}</strong>
                                 </div>
+                                <div class="hero-panel-item">
+                                    <span class="hero-panel-label">Rata-rata Nilai Tx</span>
+                                    <strong>Rp {{ number_format($avgTransactionValue, 0, ',', '.') }}</strong>
+                                </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ─────────── Action Items + Sesi Hari Ini (NEW) ─────────── --}}
+    <div class="row g-4 mb-4">
+        <div class="col-xl-5">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div>
+                            <p class="text-muted text-uppercase mb-1" style="font-size:0.7rem;letter-spacing:0.1em;font-weight:600;">Butuh Perhatian</p>
+                            <h5 class="mb-0 d-flex align-items-center gap-2">
+                                <i class="mdi mdi-alert-circle-outline text-danger"></i>
+                                Action Items
+                            </h5>
+                        </div>
+                        @php $totalAttention = $attentionPendingOverdue + $attentionFailedToday + $attentionStuckSessions; @endphp
+                        @if($totalAttention > 0)
+                            <span class="attention-count">{{ $totalAttention }}</span>
+                        @else
+                            <span class="attention-count attention-count-ok">✓</span>
+                        @endif
+                    </div>
+
+                    <div class="attention-list">
+                        <a href="{{ route('transactions.index', ['status' => 'pending']) }}" class="attention-item">
+                            <div class="attention-icon" style="background:#fef3c7;color:#b45309;">
+                                <i class="mdi mdi-clock-alert-outline"></i>
+                            </div>
+                            <div class="attention-body">
+                                <div class="attention-title">Pending payment >24 jam</div>
+                                <div class="attention-meta">Perlu di-follow up segera</div>
+                            </div>
+                            <span class="attention-num {{ $attentionPendingOverdue > 0 ? 'text-warning' : 'text-muted' }}">{{ $attentionPendingOverdue }}</span>
+                        </a>
+
+                        <a href="{{ route('transactions.index', ['status' => 'failed']) }}" class="attention-item">
+                            <div class="attention-icon" style="background:#fee2e2;color:#b91c1c;">
+                                <i class="mdi mdi-close-circle-outline"></i>
+                            </div>
+                            <div class="attention-body">
+                                <div class="attention-title">Failed / expired hari ini</div>
+                                <div class="attention-meta">Investigasi penyebab</div>
+                            </div>
+                            <span class="attention-num {{ $attentionFailedToday > 0 ? 'text-danger' : 'text-muted' }}">{{ $attentionFailedToday }}</span>
+                        </a>
+
+                        <a href="{{ route('photo-sessions.index') }}" class="attention-item">
+                            <div class="attention-icon" style="background:#e0e7ff;color:#4338ca;">
+                                <i class="mdi mdi-camera-timer"></i>
+                            </div>
+                            <div class="attention-body">
+                                <div class="attention-title">Sesi stuck >2 jam</div>
+                                <div class="attention-meta">Status capturing belum selesai</div>
+                            </div>
+                            <span class="attention-num {{ $attentionStuckSessions > 0 ? 'text-primary' : 'text-muted' }}">{{ $attentionStuckSessions }}</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-7">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div>
+                            <p class="text-muted text-uppercase mb-1" style="font-size:0.7rem;letter-spacing:0.1em;font-weight:600;">Live Activity</p>
+                            <h5 class="mb-0 d-flex align-items-center gap-2">
+                                <span class="live-dot"></span>
+                                Sesi Hari Ini
+                            </h5>
+                        </div>
+                        <a href="{{ route('photo-sessions.index') }}" class="btn btn-sm btn-soft-primary">Lihat Semua</a>
+                    </div>
+
+                    <div class="today-session-list">
+                        @forelse($todaySessions as $session)
+                            <div class="today-session-row">
+                                <span class="today-session-dot {{ $session->status === 'completed' ? 'session-done' : 'session-live' }}"></span>
+                                <div class="today-session-body">
+                                    <div class="today-session-title">{{ $session->transaction?->order_id ?? 'Tanpa Order' }}</div>
+                                    <div class="today-session-meta">
+                                        <span>{{ $session->template?->name ?? 'Template?' }}</span>
+                                        <span class="badge {{ $session->status === 'completed' ? 'bg-soft-success text-success' : 'bg-soft-warning text-warning' }} session-status-pill">
+                                            {{ $session->status === 'completed' ? 'Selesai' : 'Capturing' }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="today-session-time">{{ $session->created_at->format('H:i') }}</div>
+                            </div>
+                        @empty
+                            <div class="text-center text-muted py-4">
+                                <i class="mdi mdi-camera-off-outline" style="font-size:2.4rem;opacity:0.4;"></i>
+                                <p class="mb-0 mt-2 small">Belum ada sesi hari ini</p>
+                                <small class="text-muted">Sesi akan muncul saat customer mulai capturing.</small>
+                            </div>
+                        @endforelse
                     </div>
                 </div>
             </div>
@@ -361,59 +452,43 @@
 
 @push('styles')
 <style>
+    /* ── Dashboard hero — clean dark gradient ── */
     .dashboard-hero {
         background:
-            radial-gradient(ellipse at 80% -10%, rgba(232, 180, 0, 0.45) 0%, transparent 50%),
-            radial-gradient(ellipse at -5% 110%, rgba(180, 110, 0, 0.45) 0%, transparent 45%),
-            linear-gradient(135deg, #1a1200 0%, #3d2a00 30%, #7a5200 65%, #9e6e00 100%);
-        border-radius: 24px !important;
+            radial-gradient(ellipse at 92% -10%, rgba(232, 201, 0, 0.18) 0%, transparent 55%),
+            radial-gradient(ellipse at -5% 105%, rgba(232, 201, 0, 0.10) 0%, transparent 50%),
+            linear-gradient(135deg, #0a0a0a 0%, #18181b 55%, #27272a 100%);
+        border-radius: 20px !important;
         position: relative;
         overflow: hidden;
-        box-shadow: 0 20px 60px rgba(100, 65, 0, 0.45), 0 4px 16px rgba(0, 0, 0, 0.2) !important;
+        box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.45) !important;
     }
 
     .dashboard-hero::before {
         content: '';
         position: absolute;
         inset: 0;
-        background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
-        background-size: 28px 28px;
+        background-image:
+            linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px);
+        background-size: 32px 32px;
         pointer-events: none;
         z-index: 0;
+        mask-image: radial-gradient(ellipse at center, #000 0%, transparent 80%);
+        -webkit-mask-image: radial-gradient(ellipse at center, #000 0%, transparent 80%);
     }
 
-    .hero-deco-circle {
+    .hero-glow {
         position: absolute;
+        top: -120px;
+        right: -100px;
+        width: 360px;
+        height: 360px;
         border-radius: 50%;
-        pointer-events: none;
+        background: radial-gradient(circle, rgba(232, 201, 0, 0.22) 0%, transparent 65%);
+        filter: blur(40px);
         z-index: 0;
-    }
-
-    .hero-deco-circle-1 {
-        width: 400px;
-        height: 400px;
-        top: -140px;
-        right: -80px;
-        border: 1.5px solid rgba(255, 255, 255, 0.08);
-        background: rgba(255, 255, 255, 0.025);
-    }
-
-    .hero-deco-circle-2 {
-        width: 240px;
-        height: 240px;
-        top: -90px;
-        right: 30px;
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        background: transparent;
-    }
-
-    .hero-deco-circle-3 {
-        width: 300px;
-        height: 300px;
-        bottom: -120px;
-        left: 28%;
-        background: radial-gradient(circle, rgba(232, 180, 0, 0.3) 0%, transparent 70%);
-        filter: blur(20px);
+        pointer-events: none;
     }
 
     .dashboard-hero .card-body {
@@ -422,44 +497,220 @@
     }
 
     .hero-badge {
-        background: rgba(255, 255, 255, 0.12) !important;
-        border: 1px solid rgba(255, 255, 255, 0.22);
+        background: rgba(232, 201, 0, 0.12) !important;
+        border: 1px solid rgba(232, 201, 0, 0.3);
         letter-spacing: 0.05em;
-        font-size: 0.75rem;
+        font-size: 0.72rem;
         font-weight: 600;
-        backdrop-filter: blur(4px);
+        color: #E8C900 !important;
+        text-transform: uppercase;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .hero-badge-divider {
+        width: 1px;
+        height: 12px;
+        background: rgba(232, 201, 0, 0.4);
+    }
+
+    .hero-badge-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.68rem;
+    }
+
+    .hero-badge-status.live { color: #22c55e; }
+    .hero-badge-status.down { color: #ef4444; }
+
+    .hero-status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+        box-shadow: 0 0 8px currentColor;
+        animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
     }
 
     .dashboard-hero h3 {
-        font-size: 1.45rem;
+        font-size: 1.55rem;
         font-weight: 700;
-        line-height: 1.35;
+        line-height: 1.3;
+        letter-spacing: -0.02em;
+        color: #fafaf5 !important;
     }
 
+    .hero-sub {
+        color: rgba(250, 250, 245, 0.7) !important;
+        font-size: 0.95rem;
+    }
+
+    .hero-meta {
+        font-size: 0.82rem;
+        color: rgba(250, 250, 245, 0.5);
+    }
+
+    .hero-meta .mdi { color: rgba(232, 201, 0, 0.7); }
+
     .hero-panel {
-        background: rgba(255, 255, 255, 0.09);
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        border-radius: 20px;
-        padding: 1.5rem;
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        padding: 1.25rem 1.4rem;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
         display: grid;
-        gap: 0.9rem;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+        gap: 0.2rem;
     }
 
     .hero-panel-item {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        color: #fff;
-        padding: 0.4rem 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        gap: 1rem;
+        padding: 0.55rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
 
     .hero-panel-item:last-child { border-bottom: none; }
-    .hero-panel-label { color: rgba(255, 255, 255, 0.65); font-size: 0.82rem; }
-    .hero-panel-item strong { font-size: 0.95rem; font-weight: 700; color: #fff; }
+    .hero-panel-label { color: rgba(250, 250, 245, 0.6); font-size: 0.78rem; font-weight: 500; }
+    .hero-panel-item strong {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #fafaf5;
+        letter-spacing: -0.01em;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Action Items widget ── */
+    .attention-count {
+        background: #fef2f2;
+        color: #b91c1c;
+        font-size: 0.85rem;
+        font-weight: 700;
+        padding: 0.3rem 0.7rem;
+        border-radius: 999px;
+        min-width: 36px;
+        text-align: center;
+    }
+    .attention-count-ok { background: #f0fdf4; color: #15803d; }
+    .attention-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .attention-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.7rem 0.75rem;
+        border-radius: 10px;
+        text-decoration: none;
+        background: #fafaf5;
+        transition: background 0.15s ease, transform 0.15s ease;
+    }
+    .attention-item:hover {
+        background: #f4f4ed;
+        transform: translateX(2px);
+    }
+    .attention-icon {
+        width: 36px; height: 36px;
+        border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.05rem; flex-shrink: 0;
+    }
+    .attention-body { flex: 1; min-width: 0; }
+    .attention-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #18181b;
+        line-height: 1.2;
+    }
+    .attention-meta {
+        font-size: 0.72rem;
+        color: #71717a;
+        margin-top: 2px;
+    }
+    .attention-num {
+        font-size: 1.15rem;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Live activity / Sesi hari ini ── */
+    .live-dot {
+        width: 8px; height: 8px;
+        background: #22c55e;
+        border-radius: 50%;
+        display: inline-block;
+        box-shadow: 0 0 0 3px rgba(34,197,94,0.18);
+        animation: livePulse 2s ease-in-out infinite;
+    }
+    @keyframes livePulse {
+        0%, 100% { opacity: 1; box-shadow: 0 0 0 3px rgba(34,197,94,0.18); }
+        50%      { opacity: 0.6; box-shadow: 0 0 0 6px rgba(34,197,94,0.08); }
+    }
+    .today-session-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        max-height: 280px;
+        overflow-y: auto;
+    }
+    .today-session-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.6rem 0.5rem;
+        border-bottom: 1px solid rgba(0,0,0,0.04);
+        border-radius: 6px;
+        transition: background 0.15s;
+    }
+    .today-session-row:last-child { border-bottom: none; }
+    .today-session-row:hover { background: #fafaf5; }
+    .today-session-dot {
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .session-done { background: #22c55e; }
+    .session-live {
+        background: #E8C900;
+        box-shadow: 0 0 0 3px rgba(232,201,0,0.2);
+        animation: livePulse 2s ease-in-out infinite;
+    }
+    .today-session-body { flex: 1; min-width: 0; }
+    .today-session-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #18181b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .today-session-meta {
+        font-size: 0.72rem;
+        color: #71717a;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 2px;
+    }
+    .session-status-pill {
+        font-size: 0.62rem !important;
+        padding: 0.15rem 0.5rem !important;
+        font-weight: 600 !important;
+    }
+    .today-session-time {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #71717a;
+        font-variant-numeric: tabular-nums;
+        flex-shrink: 0;
+    }
 
     .stat-card { border-radius: 18px; transition: box-shadow 0.2s ease, transform 0.2s ease; }
     .stat-card:hover { box-shadow: 0 8px 24px rgba(15, 23, 42, 0.1) !important; transform: translateY(-2px); }

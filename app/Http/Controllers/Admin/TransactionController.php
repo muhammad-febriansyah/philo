@@ -48,6 +48,14 @@ class TransactionController extends Controller
             $query->where('status', $request->status);
         }
 
+        if ($request->filled('start_date')) {
+            $query->whereDate('created_at', '>=', $request->start_date);
+        }
+
+        if ($request->filled('end_date')) {
+            $query->whereDate('created_at', '<=', $request->end_date);
+        }
+
         return DataTables::of($query)
             ->addIndexColumn()
             ->addColumn('branch_name', fn (Transaction $transaction) => $transaction->branch->name ?? '-')
@@ -91,7 +99,7 @@ class TransactionController extends Controller
         $filename = 'transaksi_'.now()->format('Ymd_His').'.xlsx';
 
         return Excel::download(
-            new TransactionExport($branchId, $request->status, $request->q),
+            new TransactionExport($branchId, $request->status, $request->q, $request->start_date, $request->end_date),
             $filename
         );
     }
@@ -104,6 +112,8 @@ class TransactionController extends Controller
         $query = Transaction::with(['branch', 'package'])
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
+            ->when($request->filled('start_date'), fn ($q) => $q->whereDate('created_at', '>=', $request->start_date))
+            ->when($request->filled('end_date'), fn ($q) => $q->whereDate('created_at', '<=', $request->end_date))
             ->when($request->filled('q'), function ($q) use ($request) {
                 $kw = $request->q;
                 $q->where(function ($inner) use ($kw) {
@@ -126,6 +136,8 @@ class TransactionController extends Controller
             'logoUrl' => $logoUrl,
             'filterBranch' => $filterBranch,
             'filterStatus' => $request->status,
+            'filterStartDate' => $request->start_date,
+            'filterEndDate' => $request->end_date,
             'search' => $request->q,
         ])->setPaper('a4', 'landscape');
 

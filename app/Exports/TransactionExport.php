@@ -23,6 +23,8 @@ class TransactionExport implements FromQuery, ShouldAutoSize, WithColumnFormatti
         private readonly ?int $branchId,
         private readonly ?string $status,
         private readonly ?string $search,
+        private readonly ?string $startDate = null,
+        private readonly ?string $endDate = null,
     ) {}
 
     public function query()
@@ -30,6 +32,8 @@ class TransactionExport implements FromQuery, ShouldAutoSize, WithColumnFormatti
         return Transaction::with(['branch', 'package'])
             ->when($this->branchId, fn ($q) => $q->where('branch_id', $this->branchId))
             ->when($this->status, fn ($q) => $q->where('status', $this->status))
+            ->when($this->startDate, fn ($q) => $q->whereDate('created_at', '>=', $this->startDate))
+            ->when($this->endDate, fn ($q) => $q->whereDate('created_at', '<=', $this->endDate))
             ->when($this->search, function ($q) {
                 $kw = $this->search;
                 $q->where(function ($inner) use ($kw) {

@@ -69,7 +69,7 @@ function isNearWhite(r: number, g: number, b: number, a: number) {
     return max > 236 && min > 224 && max - min < 18;
 }
 
-function detectSlotsFromImage(image: HTMLImageElement, expectedCount: number): SlotPosition[] {
+export function detectSlotsFromImage(image: HTMLImageElement, expectedCount: number): SlotPosition[] {
     const maxWidth = 320;
     const ratio = Math.min(1, maxWidth / image.naturalWidth);
     const width = Math.max(1, Math.round(image.naturalWidth * ratio));
@@ -225,6 +225,72 @@ function normalizeStoredSlots(
     return normalized
         .filter((slot) => slot.width > 0 && slot.height > 0)
         .sort((left, right) => (left.y === right.y ? left.x - right.x : left.y - right.y));
+}
+
+export interface CapturedPhotoLike {
+    id: number;
+    url: string;
+    order: number;
+}
+
+export async function composeFinalImage(
+    photos: CapturedPhotoLike[],
+    template: TemplateSlotSource | null,
+): Promise<string> {
+    const { width, height, slots, frameAsset } = await resolveTemplateLayout(template, photos.length);
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) {
+        throw new Error('Canvas tidak tersedia');
+    }
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+
+    const sortedPhotos = [...photos].sort((a, b) => a.order - b.order);
+
+    for (let index = 0; index < sortedPhotos.length; index += 1) {
+        const photo = sortedPhotos[index];
+        const slot = slots[index];
+
+        if (!slot) {
+            continue;
+        }
+
+        try {
+            const image = await loadImage(photo.url);
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(slot.x, slot.y, slot.width, slot.height);
+            ctx.clip();
+
+            const scale = Math.max(slot.width / image.width, slot.height / image.height);
+            const drawWidth = image.width * scale;
+            const drawHeight = image.height * scale;
+
+            ctx.drawImage(
+                image,
+                slot.x + (slot.width - drawWidth) / 2,
+                slot.y + (slot.height - drawHeight) / 2,
+                drawWidth,
+                drawHeight,
+            );
+            ctx.restore();
+        } catch {
+            ctx.fillStyle = '#e5e7eb';
+            ctx.fillRect(slot.x, slot.y, slot.width, slot.height);
+        }
+    }
+
+    if (frameAsset) {
+        ctx.drawImage(frameAsset, 0, 0, width, height);
+    }
+
+    return canvas.toDataURL('image/jpeg', 0.95);
 }
 
 export async function resolveTemplateLayout(

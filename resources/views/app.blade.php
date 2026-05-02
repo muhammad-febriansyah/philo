@@ -32,16 +32,39 @@
         </style>
 
         @php
-            $siteName = $siteSettings['site_name'] ?? config('app.name', 'Laravel');
+            $siteName = $siteSettings['site_name'] ?? config('app.name', 'Philo Photobooth');
+            $siteDescription = $siteSettings['site_description'] ?? ($siteName . ' - Photobooth terbaik untuk momen tak terlupakan.');
             $faviconPath = $siteSettings['favicon_path'] ?? null;
+            $logoPath = $siteSettings['logo_path'] ?? null;
+            $ogImage = $logoPath ? Storage::url($logoPath) : '/philo.png';
+            $ogImageAbsolute = str_starts_with($ogImage, 'http') ? $ogImage : (request()->getSchemeAndHttpHost() . $ogImage);
+            $faviconUrl = $faviconPath ? Storage::url($faviconPath) : '/philo.png';
+            $currentUrl = url()->current();
         @endphp
-        @if($faviconPath)
-            <link rel="icon" href="{{ Storage::url($faviconPath) }}" sizes="any">
-        @else
-            <link rel="icon" href="/favicon.ico" sizes="any">
-            <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-        @endif
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+        {{-- Open Graph / SEO (server-side for social media scrapers) --}}
+        <meta name="description" content="{{ $siteDescription }}">
+        <meta name="application-name" content="{{ $siteName }}">
+        <meta name="theme-color" content="#E8C900">
+        <meta property="og:type" content="website">
+        <meta property="og:site_name" content="{{ $siteName }}">
+        <meta property="og:title" content="{{ $siteName }}">
+        <meta property="og:description" content="{{ $siteDescription }}">
+        <meta property="og:image" content="{{ $ogImageAbsolute }}">
+        <meta property="og:image:secure_url" content="{{ $ogImageAbsolute }}">
+        <meta property="og:image:type" content="image/png">
+        <meta property="og:image:width" content="500">
+        <meta property="og:image:height" content="500">
+        <meta property="og:image:alt" content="{{ $siteName }}">
+        <meta property="og:url" content="{{ $currentUrl }}">
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="{{ $siteName }}">
+        <meta name="twitter:description" content="{{ $siteDescription }}">
+        <meta name="twitter:image" content="{{ $ogImageAbsolute }}">
+        <link rel="icon" href="{{ $faviconUrl }}" sizes="any" type="image/png">
+        <link rel="shortcut icon" href="{{ $faviconUrl }}">
+        <link rel="apple-touch-icon" href="{{ $faviconUrl }}">
+        <link rel="image_src" href="{{ $ogImageAbsolute }}">
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />

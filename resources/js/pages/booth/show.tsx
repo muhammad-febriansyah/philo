@@ -1,12 +1,11 @@
 import { Head } from '@inertiajs/react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import CaptureStep from '@/components/booth/capture-step';
 import CompleteStep from '@/components/booth/complete-step';
 import FrameStep from '@/components/booth/frame-step';
 import LandingStep from '@/components/booth/landing-step';
-import PackageStep from '@/components/booth/package-step';
 import PaymentStep from '@/components/booth/payment-step';
-import PreviewStep from '@/components/booth/preview-step';
+import PhotoEditorStep from '@/components/booth/photo-editor-step';
 import { api } from '@/lib/api';
 
 interface Branch {
@@ -14,16 +13,6 @@ interface Branch {
     name: string;
     code: string;
     photo: string | null;
-}
-
-interface Package {
-    id: number;
-    name: string;
-    description: string | null;
-    photo_count: number;
-    print_size: string;
-    price: number;
-    template_ids: number[];
 }
 
 interface Template {
@@ -41,17 +30,28 @@ interface Template {
     print_size: string;
 }
 
-interface TransactionData {
+export interface AppliedVoucher {
+    id: number;
+    code: string;
+    name: string | null;
+    type: 'percentage' | 'fixed';
+    value: number;
+    discount_amount: number;
+    final_amount: number;
+}
+
+export interface TransactionData {
     transaction_id: number;
     order_id: string;
     amount: number;
     qr_url: string | null;
     expired_at: string;
-    payment_provider?: 'doku' | 'duitku';
+    payment_provider?: 'doku' | 'duitku' | 'manual';
     payment_method_code?: string | null;
     gateway_reference?: string | null;
     payment_url?: string | null;
     is_simulation?: boolean;
+    manual_qris_image_url?: string | null;
 }
 
 interface CapturedPhoto {
@@ -60,39 +60,33 @@ interface CapturedPhoto {
     order: number;
 }
 
-interface CompleteResponse {
-    success: boolean;
-    final_image_url: string | null;
-    download_qr_svg: string | null;
-}
-
 interface GatewayResumeState {
     transaction: TransactionData;
-    selectedPackage: Package;
+    extraPrints: number;
     branch_code: string;
     created_at: number;
 }
 
-type Step =
-    | 'landing'
-    | 'packages'
-    | 'payment'
-    | 'frame'
-    | 'capturing'
-    | 'preview'
-    | 'complete';
+type Step = 'landing' | 'payment' | 'frame' | 'capturing' | 'complete' | 'editing';
 
 interface Props {
     branch: Branch;
-    packages: Package[];
     templates: Template[];
+    galleryImages: string[];
     settings: {
         site_name: string | null;
         logo_path: string | null;
         booth_countdown_seconds: number;
         booth_idle_timeout_seconds: number;
-        payment_provider: 'doku' | 'duitku';
+        booth_base_price: number;
+        booth_extra_print_price: number;
+        booth_max_extra_prints: number;
+        payment_provider: 'doku' | 'duitku' | 'manual';
         duitku_payment_method: string;
+        manual_qris_image_url: string | null;
+        print_enabled: boolean;
+        print_auto_print: boolean;
+        print_default_size: string;
     };
 }
 
@@ -115,7 +109,6 @@ function useIdleReset(
             if (timeoutId) {
                 clearTimeout(timeoutId);
             }
-
             timeoutId = setTimeout(onTimeout, timeoutSeconds * 1000);
         };
 
@@ -131,16 +124,13 @@ function useIdleReset(
         ];
 
         events.forEach((eventName) =>
-            window.addEventListener(eventName, handleActivity, {
-                passive: true,
-            }),
+            window.addEventListener(eventName, handleActivity, { passive: true }),
         );
 
         return () => {
             if (timeoutId) {
                 clearTimeout(timeoutId);
             }
-
             events.forEach((eventName) =>
                 window.removeEventListener(eventName, handleActivity),
             );
@@ -150,117 +140,76 @@ function useIdleReset(
 
 export default function BoothShow({
     branch,
-    packages,
     templates,
+    galleryImages,
     settings,
 }: Props) {
     const [step, setStep] = useState<Step>('landing');
     const [loadingAction, setLoadingAction] = useState(false);
-    const [selectedPackage, setSelectedPackage] = useState<Package | null>(
-        null,
-    );
-    const [transaction, setTransaction] = useState<TransactionData | null>(
-        null,
-    );
+    const [extraPrints, setExtraPrints] = useState(0);
+    const [transaction, setTransaction] = useState<TransactionData | null>(null);
+    const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
     const [sessionId, setSessionId] = useState<number | null>(null);
-    const [photoCount, setPhotoCount] = useState(0);
     const [capturedPhotos, setCapturedPhotos] = useState<CapturedPhoto[]>([]);
-    const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
-        null,
-    );
-    const [finalImage, setFinalImage] = useState<string | null>(null);
-    const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-    const [downloadQrSvg, setDownloadQrSvg] = useState<string | null>(null);
-    const [duitkuPaymentMethod, setDuitkuPaymentMethod] = useState(
-        settings.duitku_payment_method || 'GQ',
-    );
+    const [editedImage, setEditedImage] = useState<string | null>(null);
+    const [duitkuPaymentMethod] = useState(settings.duitku_payment_method || 'GQ');
 
     const siteName = settings.site_name ?? 'Philo Photobooth';
-    const logoUrl = settings.logo_path
-        ? `/storage/${settings.logo_path}`
-        : null;
+    const logoUrl = settings.logo_path ? `/storage/${settings.logo_path}` : null;
     const countdownSeconds = settings.booth_countdown_seconds || 5;
     const idleTimeoutSeconds = settings.booth_idle_timeout_seconds || 60;
-
-    const matchingTemplates = useMemo(() => {
-        if (!selectedPackage) {
-            return [];
-        }
-
-        return templates.filter((template) => {
-            const assignedByAdmin = selectedPackage.template_ids.includes(
-                template.id,
-            );
-            const isCompatibleWithPackage =
-                template.print_size.toLowerCase() ===
-                    selectedPackage.print_size.toLowerCase() &&
-                template.photo_slots === selectedPackage.photo_count;
-
-            if (selectedPackage.template_ids.length > 0) {
-                return assignedByAdmin && isCompatibleWithPackage;
-            }
-
-            return isCompatibleWithPackage;
-        });
-    }, [selectedPackage, templates]);
 
     const reset = useCallback(() => {
         sessionStorage.removeItem(GATEWAY_RESUME_KEY);
         setStep('landing');
         setLoadingAction(false);
-        setSelectedPackage(null);
+        setExtraPrints(0);
         setTransaction(null);
-        setSessionId(null);
-        setPhotoCount(0);
-        setFinalImage(null);
-        setDownloadUrl(null);
-        setDownloadQrSvg(null);
-        setCapturedPhotos([]);
         setSelectedTemplate(null);
+        setSessionId(null);
+        setCapturedPhotos([]);
+        setEditedImage(null);
     }, []);
 
+    // Resume after Duitku redirect
     useEffect(() => {
         const raw = sessionStorage.getItem(GATEWAY_RESUME_KEY);
-
-        if (!raw) {
-            return;
-        }
+        if (!raw) return;
 
         try {
             const parsed = JSON.parse(raw) as GatewayResumeState;
 
-            if (!parsed?.transaction || !parsed?.selectedPackage || !parsed?.branch_code || !parsed?.created_at) {
+            if (
+                !parsed?.transaction ||
+                !parsed?.branch_code ||
+                !parsed?.created_at
+            ) {
                 sessionStorage.removeItem(GATEWAY_RESUME_KEY);
                 return;
             }
 
             const isExpired = Date.now() - parsed.created_at > GATEWAY_RESUME_TTL_MS;
-
-            if (isExpired) {
-                sessionStorage.removeItem(GATEWAY_RESUME_KEY);
-                return;
-            }
-
-            if (parsed.branch_code !== branch.code) {
+            if (isExpired || parsed.branch_code !== branch.code) {
                 sessionStorage.removeItem(GATEWAY_RESUME_KEY);
                 return;
             }
 
             const params = new URLSearchParams(window.location.search);
             const txFromUrl = params.get('tx');
-
-            if (txFromUrl && Number(txFromUrl) !== parsed.transaction.transaction_id) {
+            if (
+                txFromUrl &&
+                Number(txFromUrl) !== parsed.transaction.transaction_id
+            ) {
                 return;
             }
 
-            setSelectedPackage(parsed.selectedPackage);
+            setExtraPrints(parsed.extraPrints || 0);
             setTransaction(parsed.transaction);
             setStep('payment');
 
             if (params.get('gateway_return') === 'duitku') {
                 params.delete('gateway_return');
                 params.delete('tx');
-
                 const search = params.toString();
                 const cleanedUrl = `${window.location.pathname}${search ? `?${search}` : ''}`;
                 window.history.replaceState({}, '', cleanedUrl);
@@ -270,23 +219,19 @@ export default function BoothShow({
         }
     }, [branch.code]);
 
-    useIdleReset(
-        ['landing', 'packages', 'frame'].includes(step),
-        idleTimeoutSeconds,
-        reset,
-    );
+    useIdleReset(step === 'landing', idleTimeoutSeconds, reset);
 
-    const handlePackageSelect = useCallback(
-        async (pkg: Package) => {
+    const handleStart = useCallback(
+        async (extras: number) => {
             setLoadingAction(true);
-            setSelectedPackage(pkg);
+            setExtraPrints(extras);
 
             try {
                 const data = await api.post<TransactionData>(
                     '/booth/session/start',
                     {
                         branch_id: branch.id,
-                        package_id: pkg.id,
+                        extra_prints: extras,
                         payment_method_code:
                             settings.payment_provider === 'duitku'
                                 ? duitkuPaymentMethod
@@ -297,145 +242,89 @@ export default function BoothShow({
                 if (data.payment_provider === 'duitku' && data.payment_url) {
                     const resumeState: GatewayResumeState = {
                         transaction: data,
-                        selectedPackage: pkg,
+                        extraPrints: extras,
                         branch_code: branch.code,
                         created_at: Date.now(),
                     };
-
                     sessionStorage.setItem(
                         GATEWAY_RESUME_KEY,
                         JSON.stringify(resumeState),
                     );
-
                     window.location.href = data.payment_url;
-
                     return;
                 }
 
                 setTransaction(data);
                 setStep('payment');
             } catch {
-                setSelectedPackage(null);
+                // stay on landing on error
             } finally {
                 setLoadingAction(false);
             }
         },
-        [
-            branch.code,
-            branch.id,
-            duitkuPaymentMethod,
-            settings.payment_provider,
-        ],
+        [branch.code, branch.id, duitkuPaymentMethod, settings.payment_provider],
     );
 
+    const handleVoucherApplied = useCallback((newTransaction: TransactionData) => {
+        setTransaction(newTransaction);
+    }, []);
+
     const handlePaymentPaid = useCallback(async () => {
-        if (!transaction) {
-            return;
-        }
+        if (!transaction) return;
 
         try {
-            const data = await api.post<{
-                session_id: number;
-                photo_count: number;
-            }>('/booth/session/create', {
-                transaction_id: transaction.transaction_id,
-            });
-
+            const data = await api.post<{ session_id: number; photo_count: number }>(
+                '/booth/session/create',
+                {
+                    transaction_id: transaction.transaction_id,
+                },
+            );
             sessionStorage.removeItem(GATEWAY_RESUME_KEY);
-
             setSessionId(data.session_id);
-            setPhotoCount(data.photo_count);
-
-            if (matchingTemplates.length === 1) {
-                const template = matchingTemplates[0];
-                setSelectedTemplate(template);
-
-                try {
-                    await api.post('/booth/session/template', {
-                        session_id: data.session_id,
-                        template_id: template.id,
-                    });
-                } catch {
-                    // Keep local selection even if persisting template fails.
-                }
-
-                setStep('capturing');
-
-                return;
-            }
-
             setStep('frame');
         } catch {
             reset();
         }
-    }, [matchingTemplates, reset, transaction]);
+    }, [reset, transaction]);
 
     const handleFrameSelect = useCallback(
         async (template: Template) => {
             if (!sessionId) {
                 return;
             }
-
             setLoadingAction(true);
             setSelectedTemplate(template);
-
             try {
                 await api.post('/booth/session/template', {
                     session_id: sessionId,
                     template_id: template.id,
                 });
             } catch {
-                // Continue to capture even if save template fails.
-            } finally {
-                setLoadingAction(false);
+                // continue even if persistence fails — local state still has it
             }
-
+            setLoadingAction(false);
             setStep('capturing');
         },
         [sessionId],
     );
 
-    const handleFrameSkip = useCallback(() => {
-        setSelectedTemplate(null);
-        setStep('capturing');
-    }, []);
-
     const handleCaptureComplete = useCallback((photos: CapturedPhoto[]) => {
         setCapturedPhotos(photos);
-        setStep('preview');
+        setEditedImage(null);
+        setStep('complete');
     }, []);
 
-    const handlePrint = useCallback(
-        async (image: string, email?: string) => {
-            if (!sessionId) {
-                return;
-            }
+    const handleEdit = useCallback((image: string) => {
+        setEditedImage(image);
+        setStep('editing');
+    }, []);
 
-            setLoadingAction(true);
-            setFinalImage(image);
+    const handleEditDone = useCallback((edited: string) => {
+        setEditedImage(edited);
+        setStep('complete');
+    }, []);
 
-            try {
-                const response = await api.post<CompleteResponse>(
-                    '/booth/session/complete',
-                    {
-                        session_id: sessionId,
-                        final_image_data: image,
-                        customer_email: email ?? null,
-                    },
-                );
-
-                setDownloadUrl(response.final_image_url);
-                setDownloadQrSvg(response.download_qr_svg);
-            } catch {
-                setDownloadUrl(null);
-                setDownloadQrSvg(null);
-            } finally {
-                setLoadingAction(false);
-                setStep('complete');
-            }
-        },
-        [sessionId],
-    );
+    const totalPrintCopies = 1 + extraPrints;
 
     return (
         <>
@@ -453,7 +342,7 @@ export default function BoothShow({
             </Head>
 
             <div
-                className="fixed inset-0 overflow-x-hidden overflow-y-auto"
+                className={`fixed inset-0 overflow-x-hidden ${step === 'landing' ? 'overflow-hidden' : 'overflow-y-auto'}`}
                 style={{
                     background:
                         'radial-gradient(circle at top left, rgba(232,201,0,0.18), transparent 32%), radial-gradient(circle at 85% 16%, rgba(15,23,42,0.12), transparent 24%), linear-gradient(180deg, #fafaf5 0%, #f7f3e8 100%)',
@@ -482,28 +371,26 @@ export default function BoothShow({
                             siteName={siteName}
                             logoUrl={logoUrl}
                             templates={templates}
-                            onStart={() => setStep('packages')}
-                        />
-                    )}
-
-                    {step === 'packages' && (
-                        <PackageStep
-                            packages={packages}
-                            templates={templates}
-                            paymentProvider={settings.payment_provider}
-                            duitkuPaymentMethod={duitkuPaymentMethod}
-                            onDuitkuPaymentMethodChange={
-                                setDuitkuPaymentMethod
-                            }
-                            onSelect={handlePackageSelect}
-                            onBack={() => setStep('landing')}
-                            loading={loadingAction}
+                            galleryImages={galleryImages}
+                            basePrice={settings.booth_base_price}
+                            extraPrintPrice={settings.booth_extra_print_price}
+                            maxExtraPrints={settings.booth_max_extra_prints}
+                            starting={loadingAction}
+                            onStart={handleStart}
                         />
                     )}
 
                     {step === 'payment' && transaction && (
                         <PaymentStep
+                            branchId={branch.id}
+                            extraPrints={extraPrints}
                             transaction={transaction}
+                            manualQrisImageUrl={
+                                transaction.manual_qris_image_url ??
+                                settings.manual_qris_image_url ??
+                                null
+                            }
+                            onVoucherApplied={handleVoucherApplied}
                             onPaid={handlePaymentPaid}
                             onExpired={reset}
                         />
@@ -511,40 +398,47 @@ export default function BoothShow({
 
                     {step === 'frame' && (
                         <FrameStep
-                            templates={matchingTemplates}
-                            selectedPackage={selectedPackage}
+                            templates={templates}
+                            extraPrints={extraPrints}
                             onSelect={handleFrameSelect}
-                            onSkip={handleFrameSkip}
-                            onBack={() => setStep('packages')}
                             loading={loadingAction}
                         />
                     )}
 
-                    {step === 'capturing' && sessionId && (
+                    {step === 'capturing' && sessionId && selectedTemplate && (
                         <CaptureStep
                             sessionId={sessionId}
-                            photoCount={photoCount}
+                            photoCount={selectedTemplate.photo_slots}
                             countdownSeconds={countdownSeconds}
                             template={selectedTemplate}
                             onComplete={handleCaptureComplete}
                         />
                     )}
 
-                    {step === 'preview' && (
-                        <PreviewStep
+                    {step === 'complete' && sessionId && (
+                        <CompleteStep
+                            sessionId={sessionId}
                             photos={capturedPhotos}
                             template={selectedTemplate}
-                            onPrint={handlePrint}
-                            loading={loadingAction}
+                            initialImage={editedImage}
+                            printEnabled={settings.print_enabled}
+                            printAutoPrint={settings.print_auto_print}
+                            printCopies={totalPrintCopies}
+                            printPaperSize={
+                                selectedTemplate?.print_size ??
+                                settings.print_default_size
+                            }
+                            onEdit={handleEdit}
+                            onReset={reset}
                         />
                     )}
 
-                    {step === 'complete' && (
-                        <CompleteStep
-                            onReset={reset}
-                            finalImage={finalImage}
-                            downloadUrl={downloadUrl}
-                            downloadQrSvg={downloadQrSvg}
+                    {step === 'editing' && editedImage && (
+                        <PhotoEditorStep
+                            image={editedImage}
+                            onBack={() => setStep('complete')}
+                            onDone={handleEditDone}
+                            loading={loadingAction}
                         />
                     )}
                 </div>

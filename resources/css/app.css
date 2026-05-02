@@ -138,9 +138,26 @@
         @apply border-border;
     }
 
+    html {
+        scroll-behavior: smooth;
+        scroll-padding-top: 5rem;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        html {
+            scroll-behavior: auto;
+        }
+    }
+
     body {
         @apply bg-background text-foreground;
     }
+}
+
+/* Force Poppins font for the public-facing HomeLayout */
+.home-layout-root,
+.home-layout-root * {
+    font-family: 'Poppins', sans-serif;
 }
 
 @keyframes accordion-down {

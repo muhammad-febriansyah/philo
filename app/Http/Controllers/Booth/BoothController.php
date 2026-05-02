@@ -4,14 +4,17 @@ namespace App\Http\Controllers\Booth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
+use App\Models\Gallery;
 use App\Models\Package;
 use App\Models\Photo;
 use App\Models\PhotoSession;
 use App\Models\Setting;
 use App\Models\Template;
 use App\Models\Transaction;
+use App\Models\Voucher;
 use App\Services\DokuService;
 use App\Services\DuitkuService;
+use App\Services\MailketingService;
 use BaconQrCode\Renderer\Color\Rgb;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
@@ -32,31 +35,33 @@ class BoothController extends Controller
     {
         abort_if(! $branch->is_active, 404, 'Booth ini tidak aktif.');
 
-        $packages = Package::with(['templates:id'])
-            ->where('is_active', true)
-            ->orderBy('price')
-            ->get();
         $templates = Template::where('is_active', true)->get();
         $settings = Setting::getMany([
             'site_name',
             'logo_path',
             'booth_countdown_seconds',
             'booth_idle_timeout_seconds',
+            'booth_base_price',
+            'booth_extra_print_price',
+            'booth_max_extra_prints',
             'payment_provider',
             'duitku_payment_method',
+            'manual_qris_image_path',
+            'print_enabled',
+            'print_auto_print',
+            'print_default_size',
         ]);
+
+        $galleryImages = Gallery::where('is_active', true)
+            ->orderBy('sort_order')
+            ->pluck('image_path')
+            ->map(fn ($path) => Storage::url($path))
+            ->values()
+            ->toArray();
 
         return Inertia::render('booth/show', [
             'branch' => $branch->only('id', 'name', 'code', 'photo'),
-            'packages' => $packages->map(fn (Package $p) => [
-                'id' => $p->id,
-                'name' => $p->name,
-                'description' => $p->description,
-                'photo_count' => $p->photo_count,
-                'print_size' => $p->print_size,
-                'price' => $p->price,
-                'template_ids' => $p->templates->pluck('id')->values(),
-            ]),
+            'galleryImages' => $galleryImages,
             'templates' => $templates->map(fn (Template $t) => [
                 'id' => $t->id,
                 'name' => $t->name,
@@ -71,9 +76,103 @@ class BoothController extends Controller
                 'logo_path' => $settings['logo_path'],
                 'booth_countdown_seconds' => (int) ($settings['booth_countdown_seconds'] ?: 5),
                 'booth_idle_timeout_seconds' => (int) ($settings['booth_idle_timeout_seconds'] ?: 60),
+                'booth_base_price' => (int) ($settings['booth_base_price'] ?: 25000),
+                'booth_extra_print_price' => (int) ($settings['booth_extra_print_price'] ?: 5000),
+                'booth_max_extra_prints' => (int) ($settings['booth_max_extra_prints'] ?? 5),
                 'payment_provider' => (string) ($settings['payment_provider'] ?: 'doku'),
                 'duitku_payment_method' => strtoupper((string) ($settings['duitku_payment_method'] ?: 'GQ')),
+                'manual_qris_image_url' => $settings['manual_qris_image_path']
+                    ? Storage::url($settings['manual_qris_image_path'])
+                    : null,
+                'print_enabled' => (bool) ($settings['print_enabled'] ?? false),
+                'print_auto_print' => (bool) ($settings['print_auto_print'] ?? false),
+                'print_default_size' => (string) ($settings['print_default_size'] ?: 'A4'),
             ],
+        ]);
+    }
+
+    /**
+     * Resolves the internal default package used for booth sessions.
+     * All packages now share the same price (controlled via settings); this
+     * just provides a row to anchor transactions/photo_sessions to.
+     */
+    private function defaultPackage(): Package
+    {
+        return Package::where('is_active', true)
+            ->orderBy('id')
+            ->firstOrFail();
+    }
+
+    /**
+     * Computes the booth charge from settings + extras.
+     *
+     * @return array{base:int, extra_unit:int, extra_count:int, max_extra:int, total:int}
+     */
+    private function computeBoothCharge(int $extraPrints): array
+    {
+        $base = (int) Setting::get('booth_base_price', 25000);
+        $extraUnit = (int) Setting::get('booth_extra_print_price', 5000);
+        $maxExtra = (int) Setting::get('booth_max_extra_prints', 5);
+        $extraCount = max(0, min($extraPrints, $maxExtra));
+
+        return [
+            'base' => $base,
+            'extra_unit' => $extraUnit,
+            'extra_count' => $extraCount,
+            'max_extra' => $maxExtra,
+            'total' => $base + ($extraUnit * $extraCount),
+        ];
+    }
+
+    public function validateVoucher(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'code' => ['required', 'string', 'max:64'],
+            'branch_id' => ['required', 'exists:branches,id'],
+            'extra_prints' => ['nullable', 'integer', 'min:0', 'max:99'],
+        ]);
+
+        $voucher = Voucher::where('code', strtoupper(trim($validated['code'])))->first();
+
+        if (! $voucher) {
+            return response()->json(['valid' => false, 'message' => 'Kode voucher tidak ditemukan.'], 200);
+        }
+
+        $package = $this->defaultPackage();
+        $charge = $this->computeBoothCharge((int) ($validated['extra_prints'] ?? 0));
+        $totalAmount = $charge['total'];
+
+        if (! $voucher->isUsableFor((int) $package->id, (int) $validated['branch_id'], (float) $totalAmount)) {
+            $reason = match (true) {
+                ! $voucher->is_active => 'Voucher tidak aktif.',
+                $voucher->isExpired() => 'Voucher sudah kedaluwarsa.',
+                $voucher->isNotYetActive() => 'Voucher belum berlaku.',
+                $voucher->isExhausted() => 'Voucher sudah habis dipakai.',
+                $voucher->min_purchase && (float) $totalAmount < (float) $voucher->min_purchase => 'Minimum pembelian Rp '.number_format((float) $voucher->min_purchase, 0, ',', '.').'.',
+                ! empty($voucher->applicable_packages) && ! in_array($package->id, $voucher->applicable_packages) => 'Voucher tidak berlaku untuk paket ini.',
+                ! empty($voucher->applicable_branches) && ! in_array((int) $validated['branch_id'], $voucher->applicable_branches) => 'Voucher tidak berlaku di cabang ini.',
+                default => 'Voucher tidak dapat digunakan.',
+            };
+
+            return response()->json(['valid' => false, 'message' => $reason], 200);
+        }
+
+        $discount = (int) round($voucher->calculateDiscount((float) $totalAmount));
+        $finalAmount = max(0, $totalAmount - $discount);
+
+        return response()->json([
+            'valid' => true,
+            'voucher' => [
+                'id' => $voucher->id,
+                'code' => $voucher->code,
+                'name' => $voucher->name,
+                'type' => $voucher->type,
+                'value' => (float) $voucher->value,
+            ],
+            'original_amount' => $totalAmount,
+            'discount_amount' => $discount,
+            'final_amount' => $finalAmount,
+            'message' => 'Voucher diterapkan: hemat Rp '.number_format($discount, 0, ',', '.').'.',
         ]);
     }
 
@@ -81,18 +180,43 @@ class BoothController extends Controller
     {
         $validated = $request->validate([
             'branch_id' => ['required', 'exists:branches,id'],
-            'package_id' => ['required', 'exists:packages,id'],
+            'extra_prints' => ['nullable', 'integer', 'min:0', 'max:99'],
             'payment_method_code' => ['nullable', 'string', 'max:20'],
+            'voucher_code' => ['nullable', 'string', 'max:64'],
         ]);
 
-        $package = Package::findOrFail($validated['package_id']);
+        $package = $this->defaultPackage();
+        $charge = $this->computeBoothCharge((int) ($validated['extra_prints'] ?? 0));
+        $extraCount = $charge['extra_count'];
+        $originalAmount = $charge['total'];
+
         $orderId = 'PHILO-'.strtoupper(Str::random(6)).'-'.now()->format('YmdHis');
+
+        $voucherId = null;
+        $discountAmount = 0;
+        $amount = $originalAmount;
+
+        if (! empty($validated['voucher_code'])) {
+            $voucher = Voucher::where('code', strtoupper(trim($validated['voucher_code'])))->first();
+
+            if ($voucher && $voucher->isUsableFor((int) $package->id, (int) $validated['branch_id'], (float) $originalAmount)) {
+                $discountAmount = (int) round($voucher->calculateDiscount((float) $originalAmount));
+                $amount = max(0, $originalAmount - $discountAmount);
+                $voucherId = $voucher->id;
+            }
+        }
+
+        $productDetail = 'Foto Booth - Sesi'.($extraCount > 0 ? ' + '.$extraCount.' cetak tambahan' : '');
 
         $transaction = Transaction::create([
             'order_id' => $orderId,
             'branch_id' => $validated['branch_id'],
-            'package_id' => $validated['package_id'],
-            'amount' => $package->price,
+            'package_id' => $package->id,
+            'extra_prints' => $extraCount,
+            'voucher_id' => $voucherId,
+            'amount' => $amount,
+            'discount_amount' => $discountAmount,
+            'original_amount' => $voucherId ? $originalAmount : null,
             'payment_method' => $this->activeProvider(),
             'status' => 'pending',
             'expired_at' => now()->addMinutes(15),
@@ -100,8 +224,27 @@ class BoothController extends Controller
 
         $provider = $transaction->payment_method;
 
+        if ($provider === 'manual') {
+            $manualQrisImagePath = (string) Setting::get('manual_qris_image_path', '');
+            $manualQrisImageUrl = $manualQrisImagePath ? Storage::url($manualQrisImagePath) : null;
+
+            return response()->json([
+                'transaction_id' => $transaction->id,
+                'order_id' => $transaction->order_id,
+                'amount' => $transaction->amount,
+                'qr_url' => null,
+                'expired_at' => now()->addMinutes(15)->toISOString(),
+                'payment_provider' => 'manual',
+                'payment_method_code' => null,
+                'gateway_reference' => null,
+                'payment_url' => null,
+                'is_simulation' => false,
+                'manual_qris_image_url' => $manualQrisImageUrl,
+            ]);
+        }
+
         $publicBaseUrl = $request->getSchemeAndHttpHost();
-        $callbackPath = route('booth.payment.callback', [], false);
+        $callbackPath = route('api.booth.payment.callback', [], false);
         $callbackUrl = $publicBaseUrl.$callbackPath;
 
         try {
@@ -122,8 +265,8 @@ class BoothController extends Controller
 
                 $result = $duitku->createTransaction(
                     orderId: $orderId,
-                    amount: $package->price,
-                    productDetail: 'Foto Booth - '.$package->name,
+                    amount: $amount,
+                    productDetail: $productDetail,
                     email: 'customer@philobooth.com',
                     customerName: 'Pelanggan Philo',
                     callbackUrl: $callbackUrl,
@@ -134,8 +277,8 @@ class BoothController extends Controller
             } else {
                 $result = $doku->createQrisTransaction(
                     orderId: $orderId,
-                    amount: $package->price,
-                    productDetail: 'Foto Booth - '.$package->name,
+                    amount: $amount,
+                    productDetail: $productDetail,
                     email: 'customer@philobooth.com',
                     customerName: 'Pelanggan Philo',
                     callbackUrl: $callbackUrl,
@@ -175,6 +318,35 @@ class BoothController extends Controller
         ]);
     }
 
+    /**
+     * Re-issues a fresh transaction (cancelling the previous pending one)
+     * with the supplied voucher applied. Used when customer enters a voucher
+     * after the QR has already been generated on the payment screen.
+     */
+    public function reissueSession(Request $request, DokuService $doku, DuitkuService $duitku): JsonResponse
+    {
+        $validated = $request->validate([
+            'transaction_id' => ['required', 'integer', 'exists:transactions,id'],
+            'voucher_code' => ['nullable', 'string', 'max:64'],
+        ]);
+
+        $previous = Transaction::findOrFail($validated['transaction_id']);
+
+        abort_if($previous->isPaid(), 422, 'Transaksi sudah dibayar, tidak bisa diubah.');
+
+        // Mark old transaction as cancelled so polling on the old QR stops.
+        $previous->update(['status' => 'cancelled']);
+
+        $request->merge([
+            'branch_id' => $previous->branch_id,
+            'extra_prints' => (int) ($previous->extra_prints ?? 0),
+            'voucher_code' => $validated['voucher_code'] ?? null,
+            'payment_method_code' => null,
+        ]);
+
+        return $this->startSession($request, $doku, $duitku);
+    }
+
     public function checkPayment(Transaction $transaction, DokuService $doku, DuitkuService $duitku): JsonResponse
     {
         if ($transaction->isPaid()) {
@@ -189,7 +361,7 @@ class BoothController extends Controller
                     : $doku->checkTransaction($transaction->order_id);
 
                 if ($status === 'paid') {
-                    $transaction->update(['status' => 'paid', 'paid_at' => now()]);
+                    $transaction->markAsPaid();
                 } elseif (in_array($status, ['failed', 'cancelled'], true)) {
                     $transaction->update(['status' => 'failed']);
                 }
@@ -249,10 +421,8 @@ class BoothController extends Controller
         ]);
 
         if ($orderId && $status === 'SUCCESS') {
-            Transaction::where('order_id', $orderId)->update([
-                'status' => 'paid',
-                'paid_at' => now(),
-            ]);
+            $tx = Transaction::where('order_id', $orderId)->first();
+            $tx?->markAsPaid();
         }
 
         return response()->noContent();
@@ -280,10 +450,8 @@ class BoothController extends Controller
         }
 
         if ($orderId && $statusCode === '00') {
-            Transaction::where('order_id', $orderId)->update([
-                'status' => 'paid',
-                'paid_at' => now(),
-            ]);
+            $tx = Transaction::where('order_id', $orderId)->first();
+            $tx?->markAsPaid();
         } elseif ($orderId && $statusCode === '02') {
             Transaction::where('order_id', $orderId)->update([
                 'status' => 'failed',
@@ -297,10 +465,17 @@ class BoothController extends Controller
     {
         abort_unless(app()->isLocal() || app()->environment('staging'), 403, 'Simulasi hanya tersedia di mode development.');
 
-        $transaction->update([
-            'status' => 'paid',
-            'paid_at' => now(),
-        ]);
+        $transaction->markAsPaid();
+
+        return response()->json(['paid' => true]);
+    }
+
+    public function confirmManualPayment(Transaction $transaction): JsonResponse
+    {
+        abort_if($transaction->payment_method !== 'manual', 403, 'Hanya tersedia untuk pembayaran manual.');
+        abort_if($transaction->isPaid(), 200, 'Transaksi sudah dibayar.');
+
+        $transaction->markAsPaid();
 
         return response()->json(['paid' => true]);
     }
@@ -331,7 +506,7 @@ class BoothController extends Controller
     {
         $validated = $request->validate([
             'session_id' => ['required', 'exists:photo_sessions,id'],
-            'photo_data' => ['required', 'string'],
+            'photo_data' => ['required', 'string', 'max:20971520'], // 20 MB base64 ≈ 15 MB image
             'order' => ['required', 'integer', 'min:1'],
         ]);
 
@@ -340,6 +515,15 @@ class BoothController extends Controller
 
         if ($decoded === false) {
             return response()->json(['error' => 'Data foto tidak valid.'], 422);
+        }
+
+        if (strlen($decoded) > 15 * 1024 * 1024) {
+            return response()->json(['error' => 'Ukuran foto terlalu besar (maks 15 MB).'], 422);
+        }
+
+        $imgInfo = @getimagesizefromstring($decoded);
+        if ($imgInfo === false) {
+            return response()->json(['error' => 'File bukan gambar yang valid.'], 422);
         }
 
         $filename = 'photos/'.$validated['session_id'].'_'.$validated['order'].'_'.now()->timestamp.'.jpg';
@@ -386,7 +570,7 @@ class BoothController extends Controller
     {
         $validated = $request->validate([
             'session_id' => ['required', 'exists:photo_sessions,id'],
-            'final_image_data' => ['nullable', 'string'],
+            'final_image_data' => ['nullable', 'string', 'max:52428800'], // 50 MB base64 ≈ 37 MB image (covers A3 JPEG)
             'customer_email' => ['nullable', 'email'],
         ]);
 
@@ -402,11 +586,17 @@ class BoothController extends Controller
             $imageData = preg_replace('#^data:image/\w+;base64,#i', '', $validated['final_image_data']);
             $decoded = base64_decode($imageData, true);
 
-            if ($decoded !== false) {
-                $filename = 'final/'.$session->id.'_'.now()->timestamp.'.jpg';
-                Storage::disk('public')->put($filename, $decoded);
-                $updateData['final_image_path'] = $filename;
+            if ($decoded === false || strlen($decoded) > 37 * 1024 * 1024) {
+                return response()->json(['error' => 'Data gambar final tidak valid atau terlalu besar (maks 37 MB).'], 422);
             }
+
+            if (@getimagesizefromstring($decoded) === false) {
+                return response()->json(['error' => 'File bukan gambar yang valid.'], 422);
+            }
+
+            $filename = 'final/'.$session->id.'_'.now()->timestamp.'.jpg';
+            Storage::disk('public')->put($filename, $decoded);
+            $updateData['final_image_path'] = $filename;
         }
 
         $session->update($updateData);
@@ -414,11 +604,43 @@ class BoothController extends Controller
 
         $finalImageUrl = $session->final_image_path ? url(Storage::url($session->final_image_path)) : null;
 
+        if ($session->customer_email && $finalImageUrl) {
+            $this->dispatchSessionCompleteEmail($session, $finalImageUrl);
+        }
+
         return response()->json([
             'success' => true,
             'final_image_url' => $finalImageUrl,
             'download_qr_svg' => $finalImageUrl ? $this->generateQrSvgDataUri($finalImageUrl) : null,
         ]);
+    }
+
+    private function dispatchSessionCompleteEmail(PhotoSession $session, string $finalImageUrl): void
+    {
+        $mail = app(MailketingService::class);
+
+        if (! $mail->isEnabled() || ! $mail->notifySessionCompleteEnabled()) {
+            return;
+        }
+
+        $siteName = (string) Setting::get('site_name', 'Philo Photobooth');
+        $branchName = optional($session->branch)->name ?? '-';
+        $completedAt = optional($session->completed_at)->format('d F Y, H:i') ?? now()->format('d F Y, H:i');
+        $subject = 'Hasil Foto Anda Siap Diunduh — '.$siteName;
+
+        $html = view('emails.session-complete', [
+            'subject' => $subject,
+            'downloadUrl' => $finalImageUrl,
+            'branchName' => $branchName,
+            'completedAt' => $completedAt,
+            'sessionId' => $session->id,
+        ])->render();
+
+        $mail->send(
+            to: $session->customer_email,
+            subject: $subject,
+            content: $html,
+        );
     }
 
     private function generateQrSvgDataUri(string $content): string
@@ -440,7 +662,7 @@ class BoothController extends Controller
     {
         $provider = (string) Setting::get('payment_provider', 'doku');
 
-        return in_array($provider, ['doku', 'duitku'], true) ? $provider : 'doku';
+        return in_array($provider, ['doku', 'duitku', 'manual'], true) ? $provider : 'doku';
     }
 
     private function resolveProviderForTransaction(Transaction $transaction): string

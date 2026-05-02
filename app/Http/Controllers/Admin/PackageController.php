@@ -18,9 +18,35 @@ class PackageController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(): View
+    public function index(Request $request): View
     {
-        return view('packages.index');
+        $packages = Package::query()
+            ->with(['templates:id,name,print_size,photo_slots'])
+            ->withCount(['templates', 'transactions as paid_transactions_count' => function ($q) {
+                $q->where('status', 'paid');
+            }])
+            ->when($request->filled('q'), function ($q) use ($request) {
+                $term = '%'.trim($request->string('q')).'%';
+                $q->where(function ($w) use ($term) {
+                    $w->where('name', 'like', $term)
+                        ->orWhere('description', 'like', $term);
+                });
+            })
+            ->when($request->filled('status'), function ($q) use ($request) {
+                $q->where('is_active', $request->string('status')->toString() === 'active');
+            })
+            ->orderByDesc('is_active')
+            ->orderBy('price')
+            ->get();
+
+        return view('packages.index', [
+            'packages' => $packages,
+            'filters' => [
+                'q' => $request->string('q'),
+                'status' => $request->string('status'),
+                'size' => $request->string('size'),
+            ],
+        ]);
     }
 
     public function create(): View
@@ -35,7 +61,7 @@ class PackageController extends Controller
      */
     public function data(): JsonResponse
     {
-        $query = Package::query()->select(['id', 'name', 'photo_count', 'print_size', 'price', 'is_active']);
+        $query = Package::query()->select(['id', 'name', 'photo_count', 'print_size', 'print_copies', 'price', 'is_active']);
 
         return DataTables::of($query)
             ->addIndexColumn()
@@ -70,8 +96,15 @@ class PackageController extends Controller
      */
     public function store(StorePackageRequest $request): JsonResponse|RedirectResponse
     {
-        $package = Package::create($request->safe()->except('template_ids'));
-        $package->templates()->sync($request->input('template_ids', []));
+        $templateIds = $request->input('template_ids', []);
+        $derived = $this->deriveSpecsFromTemplates($templateIds);
+
+        $package = Package::create([
+            ...$request->safe()->except('template_ids'),
+            'print_size' => $derived['print_size'],
+            'photo_count' => $derived['photo_count'],
+        ]);
+        $package->templates()->sync($templateIds);
 
         if (! $request->expectsJson()) {
             return redirect()
@@ -90,10 +123,24 @@ class PackageController extends Controller
      */
     public function show(Request $request, Package $package): JsonResponse|View
     {
-        $package->load('templates:id,name,print_size,photo_slots');
+        $package->load(['templates:id,name,print_size,photo_slots,thumbnail_path,frame_path']);
 
         if (! $request->expectsJson()) {
-            return view('packages.show', compact('package'));
+            $stats = [
+                'paid_count' => $package->transactions()->where('status', 'paid')->count(),
+                'total_count' => $package->transactions()->count(),
+                'revenue' => (int) $package->transactions()->where('status', 'paid')->sum('amount'),
+                'pending_count' => $package->transactions()->where('status', 'pending')->count(),
+                'last_sold_at' => optional($package->transactions()->where('status', 'paid')->latest('paid_at')->value('paid_at'))->toDateTimeString(),
+            ];
+
+            $recentTransactions = $package->transactions()
+                ->with(['branch:id,name'])
+                ->latest()
+                ->limit(8)
+                ->get(['id', 'order_id', 'branch_id', 'package_id', 'amount', 'status', 'paid_at', 'created_at']);
+
+            return view('packages.show', compact('package', 'stats', 'recentTransactions'));
         }
 
         return response()->json($package);
@@ -114,8 +161,15 @@ class PackageController extends Controller
      */
     public function update(UpdatePackageRequest $request, Package $package): JsonResponse|RedirectResponse
     {
-        $package->update($request->safe()->except('template_ids'));
-        $package->templates()->sync($request->input('template_ids', []));
+        $templateIds = $request->input('template_ids', []);
+        $derived = $this->deriveSpecsFromTemplates($templateIds);
+
+        $package->update([
+            ...$request->safe()->except('template_ids'),
+            'print_size' => $derived['print_size'],
+            'photo_count' => $derived['photo_count'],
+        ]);
+        $package->templates()->sync($templateIds);
 
         if (! $request->expectsJson()) {
             return redirect()
@@ -145,5 +199,28 @@ class PackageController extends Controller
             ->where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'print_size', 'photo_slots', 'thumbnail_path', 'frame_path']);
+    }
+
+    /**
+     * Derive print_size & photo_count from the first selected template.
+     * All templates are validated to share the same size & slots upstream.
+     *
+     * @param  array<int, int|string>  $templateIds
+     * @return array{print_size: string, photo_count: int}
+     */
+    private function deriveSpecsFromTemplates(array $templateIds): array
+    {
+        if ($templateIds === []) {
+            return ['print_size' => '', 'photo_count' => 0];
+        }
+
+        $template = Template::query()
+            ->whereIn('id', $templateIds)
+            ->first(['print_size', 'photo_slots']);
+
+        return [
+            'print_size' => (string) ($template->print_size ?? ''),
+            'photo_count' => (int) ($template->photo_slots ?? 0),
+        ];
     }
 }

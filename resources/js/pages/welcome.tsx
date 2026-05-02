@@ -7,22 +7,25 @@ import {
     DraggableCardContainer,
 } from '@/components/ui/draggable-card';
 
+const SPRING_EASE = [0.22, 1, 0.36, 1] as const;
+const EASE_OUT = 'easeOut' as const;
+
 const fadeUp = (delay = 0) => ({
     initial: { opacity: 0, y: 28 },
     animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1], delay },
+    transition: { duration: 0.6, ease: SPRING_EASE, delay },
 });
 
 const fadeIn = (delay = 0) => ({
     initial: { opacity: 0 },
     animate: { opacity: 1 },
-    transition: { duration: 0.7, ease: 'easeOut', delay },
+    transition: { duration: 0.7, ease: EASE_OUT, delay },
 });
 
 const slideRight = (delay = 0) => ({
     initial: { opacity: 0, x: 40 },
     animate: { opacity: 1, x: 0 },
-    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1], delay },
+    transition: { duration: 0.7, ease: SPRING_EASE, delay },
 });
 
 const YELLOW = '#E8C900';
@@ -874,7 +877,7 @@ export default function Welcome() {
                                 initial={{ opacity: 0, y: 32 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true, margin: '-60px' }}
-                                transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1], delay: i * 0.12 }}
+                                transition={{ duration: 0.55, ease: SPRING_EASE, delay: i * 0.12 }}
                                 className="relative flex flex-col items-center text-center"
                             >
                                 {/* Step number + icon */}
@@ -938,7 +941,7 @@ export default function Welcome() {
                                 initial={{ opacity: 0, y: 24 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true, margin: '-50px' }}
-                                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: i * 0.08 }}
+                                transition={{ duration: 0.5, ease: SPRING_EASE, delay: i * 0.08 }}
                                 className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-zinc-300 hover:shadow-md"
                             >
                                 <div

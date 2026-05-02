@@ -15,7 +15,7 @@ class GeneralSettingController extends Controller
         'site_name', 'site_description', 'logo_path', 'favicon_path',
         'instagram_url', 'facebook_url', 'x_url', 'tiktok_url', 'whatsapp_number', 'footer_text', 'google_maps_embed',
         'booth_countdown_seconds', 'booth_idle_timeout_seconds',
-        'print_enabled', 'print_dpi', 'print_default_size',
+        'print_enabled', 'print_auto_print', 'print_copies', 'print_dpi', 'print_default_size',
     ];
 
     public function edit(): View
@@ -28,22 +28,24 @@ class GeneralSettingController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $request->validate([
-            'site_name'               => ['required', 'string', 'max:100'],
-            'site_description'        => ['nullable', 'string', 'max:255'],
-            'logo'                    => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:2048'],
-            'favicon'                 => ['nullable', 'image', 'mimes:jpg,jpeg,png,ico,svg', 'max:512'],
-            'instagram_url'           => ['nullable', 'url', 'max:255'],
-            'facebook_url'            => ['nullable', 'url', 'max:255'],
-            'x_url'                   => ['nullable', 'url', 'max:255'],
-            'tiktok_url'              => ['nullable', 'url', 'max:255'],
-            'whatsapp_number'         => ['nullable', 'string', 'max:20'],
-            'footer_text'             => ['nullable', 'string', 'max:255'],
-            'google_maps_embed'       => ['nullable', 'string', 'max:5000'],
+            'site_name' => ['required', 'string', 'max:100'],
+            'site_description' => ['nullable', 'string', 'max:255'],
+            'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:2048'],
+            'favicon' => ['nullable', 'image', 'mimes:jpg,jpeg,png,ico,svg', 'max:512'],
+            'instagram_url' => ['nullable', 'url', 'max:255'],
+            'facebook_url' => ['nullable', 'url', 'max:255'],
+            'x_url' => ['nullable', 'url', 'max:255'],
+            'tiktok_url' => ['nullable', 'url', 'max:255'],
+            'whatsapp_number' => ['nullable', 'string', 'max:20'],
+            'footer_text' => ['nullable', 'string', 'max:255'],
+            'google_maps_embed' => ['nullable', 'string', 'max:5000'],
             'booth_countdown_seconds' => ['required', 'integer', 'min:1', 'max:10'],
             'booth_idle_timeout_seconds' => ['required', 'integer', 'min:10', 'max:300'],
-            'print_enabled'           => ['boolean'],
-            'print_dpi'               => ['required', 'integer', 'in:72,150,300'],
-            'print_default_size'      => ['required', 'string', 'in:strip,A4,A3'],
+            'print_enabled' => ['boolean'],
+            'print_auto_print' => ['boolean'],
+            'print_copies' => ['required', 'integer', 'min:1', 'max:5'],
+            'print_dpi' => ['required', 'integer', 'in:72,150,300'],
+            'print_default_size' => ['required', 'string', 'in:strip,4R,A4,A3'],
         ]);
 
         // Handle logo upload
@@ -80,7 +82,7 @@ class GeneralSettingController extends Controller
             'site_name', 'site_description',
             'instagram_url', 'facebook_url', 'x_url', 'tiktok_url', 'whatsapp_number', 'footer_text', 'google_maps_embed',
             'booth_countdown_seconds', 'booth_idle_timeout_seconds',
-            'print_dpi', 'print_default_size',
+            'print_copies', 'print_dpi', 'print_default_size',
         ];
 
         foreach ($textKeys as $key) {
@@ -88,6 +90,7 @@ class GeneralSettingController extends Controller
         }
 
         Setting::set('print_enabled', $request->has('print_enabled') ? '1' : '0');
+        Setting::set('print_auto_print', $request->has('print_auto_print') ? '1' : '0');
 
         return redirect()->route('settings.general')->with('success', 'Pengaturan umum berhasil disimpan.');
     }

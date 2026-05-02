@@ -89,6 +89,19 @@ export default function HomeLayout({
         ? `/storage/${settings.logo_path}`
         : null;
 
+    const siteDescription =
+        settings?.site_description ??
+        `${siteName} – Photobooth terbaik untuk momen tak terlupakan.`;
+    const baseUrl =
+        typeof window !== 'undefined'
+            ? `${window.location.protocol}//${window.location.host}`
+            : '';
+    const ogImage = settings?.logo_path
+        ? `${baseUrl}/storage/${settings.logo_path}`
+        : `${baseUrl}/philo.png`;
+    const currentFullUrl =
+        typeof window !== 'undefined' ? window.location.href : '';
+
     return (
         <>
             <Head title={`${title} – ${siteName}`}>
@@ -99,6 +112,24 @@ export default function HomeLayout({
                         href={`/storage/${settings.favicon_path}?v=${encodeURIComponent(settings.favicon_path)}`}
                     />
                 )}
+
+                {/* SEO */}
+                <meta name="description" content={siteDescription} />
+
+                {/* Open Graph */}
+                <meta property="og:type" content="website" />
+                <meta property="og:site_name" content={siteName} />
+                <meta property="og:title" content={`${title} – ${siteName}`} />
+                <meta property="og:description" content={siteDescription} />
+                <meta property="og:image" content={ogImage} />
+                <meta property="og:url" content={currentFullUrl} />
+
+                {/* Twitter Card */}
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content={`${title} – ${siteName}`} />
+                <meta name="twitter:description" content={siteDescription} />
+                <meta name="twitter:image" content={ogImage} />
+
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link
                     rel="preconnect"
@@ -116,7 +147,7 @@ export default function HomeLayout({
                     fontFamily: "'Poppins', sans-serif",
                     background: '#FAFAF5',
                 }}
-                className="min-h-screen text-zinc-900"
+                className="home-layout-root min-h-screen text-zinc-900"
             >
                 {/* Noise texture */}
                 <div

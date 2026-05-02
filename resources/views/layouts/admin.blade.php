@@ -26,6 +26,12 @@
         <link href="{{ asset('assets/libs/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" type="text/css" />
         @stack('styles')
         <style>
+            /* ── Smooth scroll global ── */
+            html { scroll-behavior: smooth; scroll-padding-top: 5rem; }
+            @media (prefers-reduced-motion: reduce) {
+                html { scroll-behavior: auto; }
+            }
+
             /* ── Override biru → kuning #C9A800 ── */
             body[data-topbar=colored] #page-topbar {
                 background-color: #C9A800 !important;
@@ -128,14 +134,14 @@
                         </div>
 
                         <button type="button" class="btn btn-sm px-3 font-size-24 header-item waves-effect" id="vertical-menu-btn">
-                            <i class="mdi mdi-backburger"></i>
+                            <i class="fas fa-bars"></i>
                         </button>
 
                         <!-- App Search-->
                         <form class="app-search d-none d-lg-block" method="GET" action="{{ route('transactions.index') }}">
                             <div class="position-relative mt-3">
                                 <input type="text" name="q" class="form-control" placeholder="Cari transaksi..." value="{{ request('q') }}" autocomplete="off">
-                                <span class="mdi mdi-magnify"></span>
+                                <span class="fas fa-search"></span>
                             </div>
                         </form>
                     </div>
@@ -149,22 +155,22 @@
                                 @else
                                     <span class="rounded-circle flex-shrink-0 d-inline-flex align-items-center justify-content-center"
                                         style="width:36px;height:36px;background:rgba(255,255,255,0.2);border:1.5px solid rgba(255,255,255,0.35);">
-                                        <i class="mdi mdi-account" style="font-size:1.15rem;color:#fff;line-height:1;"></i>
+                                        <i class="fas fa-user" style="font-size:1.05rem;color:#fff;line-height:1;"></i>
                                     </span>
                                 @endif
                                 <span class="d-none d-sm-inline-block ms-2 lh-1">
                                     <span class="d-block" style="font-size:.85rem;">{{ auth()->user()->name }}</span>
                                     <span class="d-block text-white text-opacity-60" style="font-size:.7rem;">{{ ucfirst(auth()->user()->role) }}</span>
                                 </span>
-                                <i class="mdi mdi-chevron-down d-none d-sm-inline-block ms-1"></i>
+                                <i class="fas fa-chevron-down d-none d-sm-inline-block ms-1"></i>
                             </button>
                             <div class="dropdown-menu dropdown-menu-end">
-                                <a class="dropdown-item" href="{{ route('profile.edit') }}"><i class="mdi mdi-account-edit-outline font-size-16 align-middle me-1"></i> Edit Profil</a>
+                                <a class="dropdown-item" href="{{ route('profile.edit') }}"><i class="fas fa-user-edit font-size-16 align-middle me-1"></i> Edit Profil</a>
                                 <div class="dropdown-divider"></div>
                                 <form method="POST" action="{{ route('logout') }}" id="logout-form">
                                     @csrf
                                     <button type="submit" class="dropdown-item">
-                                        <i class="mdi mdi-logout font-size-16 align-middle me-1"></i> Logout
+                                        <i class="fas fa-sign-out-alt font-size-16 align-middle me-1"></i> Logout
                                     </button>
                                 </form>
                             </div>
@@ -179,21 +185,23 @@
                     <div id="sidebar-menu">
                         <ul class="metismenu list-unstyled" id="side-menu">
 
-                            <li class="menu-title">Menu</li>
+                            {{-- ─── Overview ─── --}}
+                            <li class="menu-title">Overview</li>
 
                             <li>
                                 <a href="{{ route('dashboard') }}" class="waves-effect {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                                    <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-view-dashboard-outline"></i></div>
+                                    <div class="d-inline-block icons-sm me-1"><i class="fas fa-th-large"></i></div>
                                     <span>Dashboard</span>
                                 </a>
                             </li>
 
-                            <li class="menu-title">Master Data</li>
+                            {{-- ─── Katalog ─── --}}
+                            <li class="menu-title">Katalog</li>
 
                             @if(auth()->user()->isAdmin())
                             <li>
                                 <a href="{{ route('branches.index') }}" class="waves-effect {{ request()->routeIs('branches.*') ? 'active' : '' }}">
-                                    <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-store"></i></div>
+                                    <div class="d-inline-block icons-sm me-1"><i class="fas fa-store"></i></div>
                                     <span>Cabang</span>
                                 </a>
                             </li>
@@ -201,104 +209,110 @@
 
                             <li>
                                 <a href="{{ route('templates.index') }}" class="waves-effect {{ request()->routeIs('templates.*') ? 'active' : '' }}">
-                                    <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-image-frame"></i></div>
-                                    <span>Template / Frame</span>
+                                    <div class="d-inline-block icons-sm me-1"><i class="far fa-images"></i></div>
+                                    <span>Frame Foto</span>
                                 </a>
                             </li>
 
-                            <li>
-                                <a href="{{ route('packages.index') }}" class="waves-effect {{ request()->routeIs('packages.*') ? 'active' : '' }}">
-                                    <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-tag-outline"></i></div>
-                                    <span>Paket Harga</span>
-                                </a>
-                            </li>
+                            {{-- Paket Foto disembunyikan: harga dikelola di Pengaturan Booth, paket dipakai internal saja. --}}
 
-                            @if(auth()->user()->isAdmin())
+                            {{-- ─── Operasional ─── --}}
+                            <li class="menu-title">Operasional</li>
+
+                            @if(auth()->user()->branch)
                             <li>
-                                <a href="{{ route('galleries.index') }}" class="waves-effect {{ request()->routeIs('galleries.*') ? 'active' : '' }}">
-                                    <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-image-outline"></i></div>
-                                    <span>Galeri</span>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="{{ route('features.index') }}" class="waves-effect {{ request()->routeIs('features.*') ? 'active' : '' }}">
-                                    <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-star-outline"></i></div>
-                                    <span>Fitur Unggulan</span>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="{{ route('faqs.index') }}" class="waves-effect {{ request()->routeIs('faqs.*') ? 'active' : '' }}">
-                                    <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-comment-question-outline"></i></div>
-                                    <span>FAQ</span>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="{{ route('steps.index') }}" class="waves-effect {{ request()->routeIs('steps.*') ? 'active' : '' }}">
-                                    <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-numeric"></i></div>
-                                    <span>Cara Kerja</span>
+                                <a href="{{ route('booth.show', auth()->user()->branch->code) }}" target="_blank" rel="noopener" class="waves-effect">
+                                    <div class="d-inline-block icons-sm me-1"><i class="fas fa-desktop"></i></div>
+                                    <span>Buka Booth <i class="fas fa-external-link-alt ms-1" style="font-size: 9px; opacity: 0.6;"></i></span>
                                 </a>
                             </li>
                             @endif
 
-                            <li class="menu-title">Operasional</li>
-
                             <li>
                                 <a href="{{ route('transactions.index') }}" class="waves-effect {{ request()->routeIs('transactions.*') ? 'active' : '' }}">
-                                    <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-credit-card-outline"></i></div>
+                                    <div class="d-inline-block icons-sm me-1"><i class="far fa-credit-card"></i></div>
                                     <span>Transaksi</span>
                                 </a>
                             </li>
 
                             <li>
                                 <a href="{{ route('photo-sessions.index') }}" class="waves-effect {{ request()->routeIs('photo-sessions.*') ? 'active' : '' }}">
-                                    <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-camera-outline"></i></div>
+                                    <div class="d-inline-block icons-sm me-1"><i class="fas fa-camera"></i></div>
                                     <span>Sesi Foto</span>
                                 </a>
                             </li>
 
+                            @if(auth()->user()->isAdmin())
+                            <li>
+                                <a href="{{ route('vouchers.index') }}" class="waves-effect {{ request()->routeIs('vouchers.*') ? 'active' : '' }}">
+                                    <div class="d-inline-block icons-sm me-1"><i class="fas fa-ticket-alt"></i></div>
+                                    <span>Voucher Diskon</span>
+                                </a>
+                            </li>
+                            @endif
+
+                            {{-- ─── Laporan ─── --}}
                             <li class="menu-title">Laporan</li>
 
                             <li>
                                 <a href="{{ route('reports.revenue') }}" class="waves-effect {{ request()->routeIs('reports.revenue') ? 'active' : '' }}">
-                                    <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-chart-line"></i></div>
-                                    <span>Revenue</span>
+                                    <div class="d-inline-block icons-sm me-1"><i class="fas fa-chart-line"></i></div>
+                                    <span>Pendapatan</span>
                                 </a>
                             </li>
 
                             @if(auth()->user()->isAdmin())
                             <li>
                                 <a href="{{ route('reports.branches') }}" class="waves-effect {{ request()->routeIs('reports.branches') ? 'active' : '' }}">
-                                    <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-chart-bar"></i></div>
-                                    <span>Per Cabang</span>
+                                    <div class="d-inline-block icons-sm me-1"><i class="far fa-chart-bar"></i></div>
+                                    <span>Performa Cabang</span>
                                 </a>
                             </li>
 
+                            {{-- ─── Konten Website ─── --}}
+                            <li class="menu-title">Konten Website</li>
+
+                            <li>
+                                <a href="{{ route('galleries.index') }}" class="waves-effect {{ request()->routeIs('galleries.*') ? 'active' : '' }}">
+                                    <div class="d-inline-block icons-sm me-1"><i class="far fa-image"></i></div>
+                                    <span>Galeri</span>
+                                </a>
+                            </li>
+
+                            <li>
+                                <a href="{{ route('features.index') }}" class="waves-effect {{ request()->routeIs('features.*') ? 'active' : '' }}">
+                                    <div class="d-inline-block icons-sm me-1"><i class="far fa-star"></i></div>
+                                    <span>Fitur Unggulan</span>
+                                </a>
+                            </li>
+
+                            <li>
+                                <a href="{{ route('steps.index') }}" class="waves-effect {{ request()->routeIs('steps.*') ? 'active' : '' }}">
+                                    <div class="d-inline-block icons-sm me-1"><i class="fas fa-list-ol"></i></div>
+                                    <span>Cara Kerja</span>
+                                </a>
+                            </li>
+
+                            <li>
+                                <a href="{{ route('faqs.index') }}" class="waves-effect {{ request()->routeIs('faqs.*') ? 'active' : '' }}">
+                                    <div class="d-inline-block icons-sm me-1"><i class="far fa-question-circle"></i></div>
+                                    <span>FAQ</span>
+                                </a>
+                            </li>
+
+                            {{-- ─── Pengaturan ─── --}}
                             <li class="menu-title">Pengaturan</li>
 
                             <li>
-                                <a href="{{ route('settings.general') }}" class="waves-effect {{ request()->routeIs('settings.general') ? 'active' : '' }}">
-                                    <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-settings-outline"></i></div>
-                                    <span>Pengaturan Umum</span>
-                                </a>
-                            </li>
-
-                            <li>
-                                <a href="{{ route('settings.payment') }}" class="waves-effect {{ request()->routeIs('settings.payment') ? 'active' : '' }}">
-                                    <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-cash-multiple"></i></div>
-                                    <span>Pembayaran</span>
-                                </a>
-                            </li>
-
-                            <li>
-                                <a href="{{ route('settings.about') }}" class="waves-effect {{ request()->routeIs('settings.about') ? 'active' : '' }}">
-                                    <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-information-outline"></i></div>
-                                    <span>Tentang Kami</span>
+                                <a href="{{ route('settings.general') }}" class="waves-effect {{ request()->routeIs('settings.*') ? 'active' : '' }}">
+                                    <div class="d-inline-block icons-sm me-1"><i class="fas fa-cog"></i></div>
+                                    <span>Pengaturan Sistem</span>
                                 </a>
                             </li>
 
                             <li>
                                 <a href="{{ route('users.index') }}" class="waves-effect {{ request()->routeIs('users.*') ? 'active' : '' }}">
-                                    <div class="d-inline-block icons-sm me-1"><i class="mdi mdi-account-multiple-outline"></i></div>
+                                    <div class="d-inline-block icons-sm me-1"><i class="fas fa-users"></i></div>
                                     <span>Pengguna</span>
                                 </a>
                             </li>

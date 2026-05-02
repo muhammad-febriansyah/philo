@@ -45,11 +45,27 @@ class SettingSeeder extends Seeder
             'booth_countdown_seconds' => '3',
             'booth_idle_timeout_seconds' => '60',
             'booth_watermark_path' => null,
+            'booth_base_price' => '25000',
+            'booth_extra_print_price' => '5000',
+            'booth_max_extra_prints' => '5',
 
             // Print
             'print_enabled' => '1',
             'print_dpi' => '300',
             'print_default_size' => 'A3',
+
+            // Email Notification (Mailketing)
+            'email_notifications_enabled' => '0',
+            'mailketing_api_token' => 'fa8bd42078ed424a1e2761492655638f',
+            'mailketing_from_name' => 'Philo Photobooth',
+            'mailketing_from_email' => 'noreply@philo.id',
+            'email_notify_paid' => '1',
+            'email_notify_session_complete' => '1',
+
+            // Google reCAPTCHA v3
+            'recaptcha_enabled' => '0',
+            'recaptcha_site_key' => '6LeBya4aAAAAAJ3b8Hc0y7wsyA5EYD4IvMqKMtr2',
+            'recaptcha_secret_key' => '6LeBya4aAAAAAKxhmMl8rrk5-Uj4T7H5PhpoPVoT',
 
             // Social / Footer
             'instagram_url' => 'https://instagram.com/philo.photobooth',

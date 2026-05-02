@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\Admin\AboutSettingController;
+use App\Http\Controllers\Admin\BoothSettingController;
 use App\Http\Controllers\Admin\BranchController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\EmailSettingController;
 use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\FeatureController;
 use App\Http\Controllers\Admin\GalleryController;
@@ -10,24 +12,26 @@ use App\Http\Controllers\Admin\GeneralSettingController;
 use App\Http\Controllers\Admin\PackageController;
 use App\Http\Controllers\Admin\PaymentSettingController;
 use App\Http\Controllers\Admin\PhotoSessionController;
+use App\Http\Controllers\Admin\RecaptchaSettingController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\StepController;
 use App\Http\Controllers\Admin\TemplateController;
 use App\Http\Controllers\Admin\TransactionController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\VoucherController;
 use App\Http\Controllers\Booth\BoothController;
 use App\Models\Branch;
 use App\Models\Faq;
+use App\Models\Gallery;
 use App\Models\Package;
 use App\Models\Setting;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
 Route::get('/', function () {
     return inertia('welcome', [
         'canRegister' => Features::enabled(Features::registration()),
-        'galleries' => \App\Models\Gallery::where('is_active', true)
+        'galleries' => Gallery::where('is_active', true)
             ->orderBy('sort_order')
             ->get(['id', 'title', 'image_path']),
     ]);
@@ -140,14 +144,16 @@ Route::get('/cabang/{branch:code}', function (Branch $branch) {
 // Booth routes (public - no auth required)
 Route::prefix('booth')->name('booth.')->group(function () {
     Route::get('{branch:code}', [BoothController::class, 'show'])->name('show');
+    Route::post('voucher/validate', [BoothController::class, 'validateVoucher'])->name('voucher.validate');
     Route::post('session/start', [BoothController::class, 'startSession'])->name('session.start');
+    Route::post('session/reissue', [BoothController::class, 'reissueSession'])->name('session.reissue');
     Route::post('session/create', [BoothController::class, 'createSession'])->name('session.create');
     Route::get('payment/{transaction}/status', [BoothController::class, 'checkPayment'])->name('payment.status');
     Route::post('payment/{transaction}/simulate', [BoothController::class, 'simulatePayment'])->name('payment.simulate');
+    Route::post('payment/{transaction}/confirm-manual', [BoothController::class, 'confirmManualPayment'])->name('payment.confirm-manual');
     Route::post('photo/capture', [BoothController::class, 'capturePhoto'])->name('photo.capture');
     Route::post('session/template', [BoothController::class, 'chooseTemplate'])->name('session.template');
     Route::post('session/complete', [BoothController::class, 'completeSession'])->name('session.complete');
-    Route::post('payment/callback', [BoothController::class, 'dokuCallback'])->name('payment.callback')->withoutMiddleware(VerifyCsrfToken::class);
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -156,6 +162,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Master Data
     Route::resource('packages', PackageController::class);
     Route::get('packages-data', [PackageController::class, 'data'])->name('packages.data');
+    Route::get('templates/builder', [TemplateController::class, 'builder'])->name('templates.builder');
+    Route::get('templates/{template}/builder', [TemplateController::class, 'builderEdit'])->name('templates.builder.edit');
     Route::resource('templates', TemplateController::class);
     Route::get('templates-data', [TemplateController::class, 'data'])->name('templates.data');
 
@@ -186,6 +194,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('steps-data', [StepController::class, 'data'])->name('steps.data');
         Route::resource('galleries', GalleryController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::get('galleries-data', [GalleryController::class, 'data'])->name('galleries.data');
+
+        Route::get('vouchers/bulk', [VoucherController::class, 'bulkCreate'])->name('vouchers.bulk.create');
+        Route::post('vouchers/bulk', [VoucherController::class, 'bulkStore'])->name('vouchers.bulk.store');
+        Route::post('vouchers/print', [VoucherController::class, 'bulkPrint'])->name('vouchers.print.bulk');
+        Route::get('vouchers/{voucher}/print', [VoucherController::class, 'print'])->name('vouchers.print');
+        Route::get('vouchers-data', [VoucherController::class, 'data'])->name('vouchers.data');
+        Route::resource('vouchers', VoucherController::class)->except(['show']);
+
         Route::get('reports/branches', [ReportController::class, 'branches'])->name('reports.branches');
         Route::get('settings/general', [GeneralSettingController::class, 'edit'])->name('settings.general');
         Route::put('settings/general', [GeneralSettingController::class, 'update'])->name('settings.general.update');
@@ -193,6 +209,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('settings/about', [AboutSettingController::class, 'update'])->name('settings.about.update');
         Route::get('settings/payment', [PaymentSettingController::class, 'edit'])->name('settings.payment');
         Route::put('settings/payment', [PaymentSettingController::class, 'update'])->name('settings.payment.update');
+        Route::get('settings/booth', [BoothSettingController::class, 'edit'])->name('settings.booth');
+        Route::put('settings/booth', [BoothSettingController::class, 'update'])->name('settings.booth.update');
+        Route::get('settings/email', [EmailSettingController::class, 'edit'])->name('settings.email');
+        Route::put('settings/email', [EmailSettingController::class, 'update'])->name('settings.email.update');
+        Route::post('settings/email/test', [EmailSettingController::class, 'test'])->name('settings.email.test');
+        Route::get('settings/recaptcha', [RecaptchaSettingController::class, 'edit'])->name('settings.recaptcha');
+        Route::put('settings/recaptcha', [RecaptchaSettingController::class, 'update'])->name('settings.recaptcha.update');
         Route::resource('users', UserController::class);
         Route::get('users-data', [UserController::class, 'data'])->name('users.data');
     });

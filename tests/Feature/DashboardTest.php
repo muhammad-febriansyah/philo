@@ -6,6 +6,7 @@ use App\Models\PhotoSession;
 use App\Models\Template;
 use App\Models\Transaction;
 use App\Models\User;
+
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
 
@@ -22,8 +23,8 @@ test('authenticated users can visit the dashboard', function () {
     $response->assertOk()
         ->assertViewIs('dashboard')
         ->assertSee('Revenue 7 Hari Terakhir')
-        ->assertSee('Performa Cabang')
-        ->assertSee('Aktivitas Sesi Foto');
+        ->assertSee('Aktivitas Cabang Hari Ini')
+        ->assertSee('Sesi Hari Ini');
 });
 
 test('dashboard shows recent operational data', function () {

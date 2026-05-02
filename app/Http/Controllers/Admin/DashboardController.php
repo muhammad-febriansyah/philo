@@ -103,6 +103,88 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
+        // ─── Action items "Butuh Perhatian" ───
+        $attentionPendingOverdue = Transaction::query()
+            ->where('status', 'pending')
+            ->where('created_at', '<', now()->subHours(24))
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->count();
+
+        $attentionFailedToday = Transaction::query()
+            ->whereIn('status', ['failed', 'expired'])
+            ->whereDate('updated_at', now()->toDateString())
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->count();
+
+        $attentionStuckSessions = PhotoSession::query()
+            ->where('status', 'capturing')
+            ->where('created_at', '<', now()->subHours(2))
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->count();
+
+        // ─── Today's sessions ───
+        $todaySessions = PhotoSession::query()
+            ->with(['branch:id,name', 'template:id,name', 'transaction:id,order_id,amount'])
+            ->whereDate('created_at', now()->toDateString())
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->latest()
+            ->limit(8)
+            ->get();
+
+        $todaySessionsCount = PhotoSession::query()
+            ->whereDate('created_at', now()->toDateString())
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->count();
+
+        $todayCompletedSessions = PhotoSession::query()
+            ->where('status', 'completed')
+            ->whereDate('completed_at', now()->toDateString())
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->count();
+
+        // ─── Branch activity today ───
+        $branchActivity = Branch::query()
+            ->where('is_active', true)
+            ->when($branchId, fn ($q) => $q->where('id', $branchId))
+            ->select('branches.id', 'branches.name', 'branches.code')
+            ->selectRaw('(SELECT COUNT(*) FROM transactions WHERE transactions.branch_id = branches.id AND DATE(transactions.created_at) = ?) as today_tx', [now()->toDateString()])
+            ->selectRaw('(SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE transactions.branch_id = branches.id AND status = "paid" AND DATE(paid_at) = ?) as today_revenue', [now()->toDateString()])
+            ->selectRaw('(SELECT COUNT(*) FROM photo_sessions WHERE photo_sessions.branch_id = branches.id AND status = "capturing") as active_sessions')
+            ->selectRaw('(SELECT MAX(created_at) FROM transactions WHERE transactions.branch_id = branches.id) as last_activity_at')
+            ->orderByDesc('today_revenue')
+            ->limit(6)
+            ->get();
+
+        // ─── Peak hours (last 7 days, 24-hour distribution) ───
+        $peakHourMap = Transaction::query()
+            ->whereDate('created_at', '>=', now()->copy()->subDays(6)->toDateString())
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->selectRaw('HOUR(created_at) as hr, COUNT(*) as cnt')
+            ->groupBy(DB::raw('HOUR(created_at)'))
+            ->pluck('cnt', 'hr');
+
+        $peakHourData = [];
+        for ($h = 0; $h < 24; $h++) {
+            $peakHourData[] = (int) ($peakHourMap[$h] ?? 0);
+        }
+        $peakHourMax = max($peakHourData) ?: 1;
+        $peakHourBest = collect($peakHourData)->keys()->sortByDesc(fn ($k) => $peakHourData[$k])->first();
+
+        // ─── Top templates this month ───
+        $topTemplates = Template::query()
+            ->leftJoin('photo_sessions', function ($j) use ($branchId) {
+                $j->on('templates.id', '=', 'photo_sessions.template_id')
+                    ->whereMonth('photo_sessions.created_at', now()->month)
+                    ->whereYear('photo_sessions.created_at', now()->year)
+                    ->when($branchId, fn ($jq) => $jq->where('photo_sessions.branch_id', $branchId));
+            })
+            ->select('templates.id', 'templates.name', 'templates.thumbnail_path', 'templates.print_size')
+            ->selectRaw('COUNT(photo_sessions.id) as usage_count')
+            ->groupBy('templates.id', 'templates.name', 'templates.thumbnail_path', 'templates.print_size')
+            ->orderByDesc('usage_count')
+            ->limit(4)
+            ->get();
+
         $viewData = [
             'todayRevenue' => $todayRevenue,
             'todayRevenueChange' => $this->percentChange($todayRevenue, $yesterdayRevenue),
@@ -131,6 +213,17 @@ class DashboardController extends Controller
             'totalSessions' => $totalSessions,
             'monthlyRevenue' => $this->monthlyRevenueTrend($branchId),
             'weeklySessions' => $this->weeklySessionsChart($branchId),
+            'attentionPendingOverdue' => $attentionPendingOverdue,
+            'attentionFailedToday' => $attentionFailedToday,
+            'attentionStuckSessions' => $attentionStuckSessions,
+            'todaySessions' => $todaySessions,
+            'todaySessionsCount' => $todaySessionsCount,
+            'todayCompletedSessions' => $todayCompletedSessions,
+            'branchActivity' => $branchActivity,
+            'peakHourData' => $peakHourData,
+            'peakHourMax' => $peakHourMax,
+            'peakHourBest' => $peakHourBest,
+            'topTemplates' => $topTemplates,
         ];
 
         if (auth()->user()->isCabang()) {

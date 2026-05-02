@@ -41,7 +41,7 @@
             <div class="card-body">
                 <div class="row align-items-end g-3">
                     @if(!$isCabangUser && $branches->isNotEmpty())
-                    <div class="col-md-3">
+                    <div class="col-md-3 col-sm-6">
                         <label class="form-label text-dark small fw-bold mb-1">CABANG</label>
                         <select id="filter-branch" class="form-select bg-light border-0">
                             <option value="">Semua Cabang</option>
@@ -51,7 +51,7 @@
                         </select>
                     </div>
                     @endif
-                    <div class="col-md-3">
+                    <div class="col-md-3 col-sm-6">
                         <label class="form-label text-dark small fw-bold mb-1">STATUS PEMBAYARAN</label>
                         <select id="filter-status" class="form-select bg-light border-0">
                             <option value="">Semua Status</option>
@@ -62,11 +62,39 @@
                             <option value="cancelled">CANCELLED</option>
                         </select>
                     </div>
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label text-dark small fw-bold mb-1">DARI TANGGAL</label>
+                        <div class="input-group">
+                            <input type="text" id="filter-start-date" class="form-control bg-light border-0 datepicker" placeholder="dd/mm/yyyy" autocomplete="off">
+                            <span class="input-group-text bg-light border-0"><i class="mdi mdi-calendar-outline"></i></span>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label text-dark small fw-bold mb-1">SAMPAI TANGGAL</label>
+                        <div class="input-group">
+                            <input type="text" id="filter-end-date" class="form-control bg-light border-0 datepicker" placeholder="dd/mm/yyyy" autocomplete="off">
+                            <span class="input-group-text bg-light border-0"><i class="mdi mdi-calendar-outline"></i></span>
+                        </div>
+                    </div>
                     <div class="col-md-auto">
                         <button type="button" class="btn btn-outline-secondary waves-effect" id="btn-reset-filter">
                             <i class="mdi mdi-filter-off-outline me-1"></i> Reset
                         </button>
                     </div>
+
+                    {{-- Quick date presets --}}
+                    <div class="col-12">
+                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                            <span class="small text-muted fw-semibold">PRESET CEPAT:</span>
+                            <button type="button" class="btn btn-sm btn-light date-preset" data-preset="today">Hari Ini</button>
+                            <button type="button" class="btn btn-sm btn-light date-preset" data-preset="yesterday">Kemarin</button>
+                            <button type="button" class="btn btn-sm btn-light date-preset" data-preset="7days">7 Hari Terakhir</button>
+                            <button type="button" class="btn btn-sm btn-light date-preset" data-preset="30days">30 Hari Terakhir</button>
+                            <button type="button" class="btn btn-sm btn-light date-preset" data-preset="this-month">Bulan Ini</button>
+                            <button type="button" class="btn btn-sm btn-light date-preset" data-preset="last-month">Bulan Lalu</button>
+                        </div>
+                    </div>
+
                     @if($isCabangUser && $branches->isNotEmpty())
                     <div class="col-12">
                         <div class="alert alert-light border mb-0 py-2 px-3">
@@ -153,10 +181,56 @@
 </div>
 @endsection
 
+@push('styles')
+<link rel="stylesheet" href="{{ asset('assets/libs/bootstrap-datepicker/css/bootstrap-datepicker.min.css') }}">
+<style>
+    .date-preset {
+        background: #fff9e0;
+        border: 1px solid #f0e0a8;
+        color: #8a6d00;
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 0.3rem 0.7rem;
+        transition: all 0.15s;
+    }
+    .date-preset:hover {
+        background: #C9A800;
+        color: #1a1200;
+        border-color: #C9A800;
+    }
+    .date-preset.active {
+        background: #1a1200;
+        color: #C9A800;
+        border-color: #1a1200;
+    }
+</style>
+@endpush
+
 @push('scripts')
+<link rel="stylesheet" href="{{ asset('assets/libs/bootstrap-datepicker/css/bootstrap-datepicker.min.css') }}">
+<script src="{{ asset('assets/libs/bootstrap-datepicker/js/bootstrap-datepicker.min.js') }}"></script>
+<script src="{{ asset('assets/libs/bootstrap-datepicker/locales/bootstrap-datepicker.id.min.js') }}"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
 <script>
 $(function () {
+    // Init datepickers
+    $('.datepicker').datepicker({
+        format: 'dd/mm/yyyy',
+        autoclose: true,
+        todayHighlight: true,
+        language: 'id',
+        clearBtn: true,
+    });
+
+    $('#filter-start-date').on('changeDate', function () {
+        $('#filter-end-date').datepicker('setStartDate', $(this).datepicker('getDate'));
+    });
+
+    function getDateParam(selector) {
+        var val = $(selector).val();
+        return val ? moment(val, 'DD/MM/YYYY').format('YYYY-MM-DD') : '';
+    }
+
     var table = $('#transactions-table').DataTable({
         processing: true,
         serverSide: true,
@@ -165,6 +239,8 @@ $(function () {
             data: function(d) {
                 d.branch_id = $('#filter-branch').val();
                 d.status = $('#filter-status').val();
+                d.start_date = getDateParam('#filter-start-date');
+                d.end_date = getDateParam('#filter-end-date');
             }
         },
         columns: [
@@ -203,10 +279,14 @@ $(function () {
         var params = new URLSearchParams();
         var branch = $('#filter-branch').val();
         var status = $('#filter-status').val();
+        var startDate = getDateParam('#filter-start-date');
+        var endDate = getDateParam('#filter-end-date');
         var q = '{{ addslashes(request("q", "")) }}';
 
         if (branch) params.set('branch_id', branch);
         if (status) params.set('status', status);
+        if (startDate) params.set('start_date', startDate);
+        if (endDate) params.set('end_date', endDate);
         if (q) params.set('q', q);
 
         var qs = params.toString() ? '?' + params.toString() : '';
@@ -216,15 +296,60 @@ $(function () {
 
     updateExportLinks();
 
-    $('#filter-branch, #filter-status').on('change', function() {
+    function applyFilter() {
         table.draw();
         updateExportLinks();
+    }
+
+    $('#filter-branch, #filter-status').on('change', applyFilter);
+    $('#filter-start-date, #filter-end-date').on('changeDate clearDate', function () {
+        $('.date-preset').removeClass('active');
+        applyFilter();
     });
 
     $('#btn-reset-filter').on('click', function() {
         $('#filter-branch, #filter-status').val('');
-        table.draw();
-        updateExportLinks();
+        $('#filter-start-date, #filter-end-date').datepicker('clearDates');
+        $('.date-preset').removeClass('active');
+        applyFilter();
+    });
+
+    // Quick date presets
+    $('.date-preset').on('click', function() {
+        var preset = $(this).data('preset');
+        var start, end;
+        var today = moment();
+
+        switch (preset) {
+            case 'today':
+                start = end = today.clone();
+                break;
+            case 'yesterday':
+                start = end = today.clone().subtract(1, 'days');
+                break;
+            case '7days':
+                start = today.clone().subtract(6, 'days');
+                end = today.clone();
+                break;
+            case '30days':
+                start = today.clone().subtract(29, 'days');
+                end = today.clone();
+                break;
+            case 'this-month':
+                start = today.clone().startOf('month');
+                end = today.clone().endOf('month');
+                break;
+            case 'last-month':
+                start = today.clone().subtract(1, 'month').startOf('month');
+                end = today.clone().subtract(1, 'month').endOf('month');
+                break;
+        }
+
+        $('.date-preset').removeClass('active');
+        $(this).addClass('active');
+        $('#filter-start-date').datepicker('setDate', start.format('DD/MM/YYYY'));
+        $('#filter-end-date').datepicker('setDate', end.format('DD/MM/YYYY'));
+        applyFilter();
     });
 
     $('#transactions-table').on('click', '.btn-detail', function() {

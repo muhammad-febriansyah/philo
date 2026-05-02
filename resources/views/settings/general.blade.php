@@ -9,6 +9,7 @@
 @endsection
 
 @section('content')
+@include('settings._tabs')
 <div class="row">
     <div class="col-12">
         <form action="{{ route('settings.general.update') }}" method="POST" enctype="multipart/form-data">
@@ -205,33 +206,7 @@
                         </div>
                     </div>
 
-                    <!-- Print Settings -->
-                    <div class="card mb-4 border-0 shadow-sm">
-                        <div class="card-header bg-transparent border-bottom p-3 d-flex justify-content-between align-items-center">
-                            <h5 class="card-title mb-0 text-dark fw-bold">Pengaturan Cetak</h5>
-                            <div class="form-check form-switch form-switch-md">
-                                <input class="form-check-input" type="checkbox" name="print_enabled" id="print_enabled" value="1" {{ (old('print_enabled', $settings['print_enabled'] ?? '0') == '1') ? 'checked' : '' }}>
-                            </div>
-                        </div>
-                        <div id="print-settings-body" class="card-body p-4 {{ (old('print_enabled', $settings['print_enabled'] ?? '0') == '1') ? '' : 'opacity-40 pointer-events-none' }}">
-                            <div class="mb-4">
-                                <label class="form-label text-dark fw-bold">Kualitas Cetak (DPI)</label>
-                                <select name="print_dpi" class="form-select bg-light border-0">
-                                    <option value="72" {{ (old('print_dpi', $settings['print_dpi'] ?? '') == '72') ? 'selected' : '' }}>72 DPI (Cepat)</option>
-                                    <option value="150" {{ (old('print_dpi', $settings['print_dpi'] ?? '') == '150') ? 'selected' : '' }}>150 DPI (Standar)</option>
-                                    <option value="300" {{ (old('print_dpi', $settings['print_dpi'] ?? '300') == '300') ? 'selected' : '' }}>300 DPI (Terbaik)</option>
-                                </select>
-                            </div>
-                            <div class="mb-0">
-                                <label class="form-label text-dark fw-bold">Ukuran Kertas Default</label>
-                                <select name="print_default_size" class="form-select bg-light border-0">
-                                    <option value="strip" {{ (old('print_default_size', $settings['print_default_size'] ?? '') == 'strip') ? 'selected' : '' }}>Photo Strip (2x6")</option>
-                                    <option value="A4" {{ (old('print_default_size', $settings['print_default_size'] ?? '') == 'A4') ? 'selected' : '' }}>A4</option>
-                                    <option value="A3" {{ (old('print_default_size', $settings['print_default_size'] ?? '') == 'A3') ? 'selected' : '' }}>A3</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
+                    {{-- Pengaturan Cetak — sementara di-hide, fitur belum dipakai --}}
 
                     <div class="mt-4">
                         <button type="submit" class="btn btn-primary btn-lg w-100 waves-effect waves-light p-3 shadow-sm rounded-3">

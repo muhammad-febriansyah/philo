@@ -3,20 +3,19 @@
 $(function () {
     var $priceDisplay = $('#price-display');
     var $priceRaw = $('#price-raw');
-    var $photoCount = $('#photo_count');
-    var $printSize = $('#print_size');
     var $templateCards = $('.template-card');
     var $selectedPreview = $('#selected-template-preview');
     var $selectedCount = $('#selected-template-count');
     var $templateMatchHint = $('#template-match-hint');
 
+    /* ─── Price input mask ─── */
     $priceDisplay.inputmask('numeric', {
         groupSeparator: '.',
         autoGroup: true,
         digits: 0,
         digitsOptional: true,
         radixPoint: ',',
-        placeholder: '0',
+        placeholder: '',
     }).on('input keyup change', function () {
         $priceRaw.val($priceDisplay.inputmask('unmaskedvalue'));
     });
@@ -25,6 +24,21 @@ $(function () {
         $priceDisplay.val($priceRaw.val()).trigger('keyup');
     }
 
+    /* ─── Chip group: jumlah cetak ─── */
+    $('.pkg-chip-group').each(function () {
+        var $group = $(this);
+        var target = $group.data('target');
+        var $hidden = $('#' + target);
+
+        $group.find('.pkg-chip-btn').on('click', function () {
+            var val = $(this).data('value');
+            $group.find('.pkg-chip-btn').removeClass('active');
+            $(this).addClass('active');
+            $hidden.val(val);
+        });
+    });
+
+    /* ─── Helpers ─── */
     function normalizePrintSize(value) {
         return String(value || '').trim().toUpperCase();
     }
@@ -35,12 +49,21 @@ $(function () {
         }).get();
     }
 
+    function getSelectedSizeAndSlots() {
+        var $first = $('.template-checkbox:checked').first();
+        if (!$first.length) return null;
+        return {
+            size: normalizePrintSize($first.data('print-size')),
+            slots: parseInt($first.data('photo-slots') || '0', 10),
+        };
+    }
+
     function renderSelectedPreview() {
         var selected = selectedTemplates();
         $selectedCount.text(selected.length);
 
         if (!selected.length) {
-            $selectedPreview.html('<div class="selected-empty text-muted" id="selected-template-empty">Belum ada template dipilih.</div>');
+            $selectedPreview.html('<div class="selected-empty text-muted small" id="selected-template-empty">Belum ada template dipilih.</div>');
             return;
         }
 
@@ -59,7 +82,7 @@ $(function () {
                     thumbHtml +
                     '<div>' +
                         '<h6>' + name + '</h6>' +
-                        '<p>' + size + ' · ' + slots + ' slot</p>' +
+                        '<p>' + size + ' · ' + slots + ' foto</p>' +
                     '</div>' +
                 '</div>';
         });
@@ -67,85 +90,50 @@ $(function () {
         $selectedPreview.html(items.join(''));
     }
 
-    function filterTemplateOptions() {
-        var photoCount = parseInt($photoCount.val() || '0', 10);
-        var printSize = normalizePrintSize($printSize.val());
-        var compatibleCount = 0;
+    /* ─── Auto-disable templates with different size when one is selected ─── */
+    function refreshTemplateAvailability() {
+        var lock = getSelectedSizeAndSlots();
 
         $templateCards.each(function () {
             var $card = $(this);
             var $checkbox = $card.find('.template-checkbox');
-            var templateSlots = parseInt($checkbox.data('photo-slots') || '0', 10);
-            var templateSize = normalizePrintSize($checkbox.data('print-size'));
-            var reasons = [];
-            var isCompatible =
-                (!photoCount || templateSlots === photoCount) &&
-                (!printSize || templateSize === printSize);
+            var size = normalizePrintSize($checkbox.data('print-size'));
+            var slots = parseInt($checkbox.data('photo-slots') || '0', 10);
 
-            if (photoCount && templateSlots !== photoCount) {
-                reasons.push('Slot harus ' + templateSlots);
-            }
+            var compatible = !lock || (size === lock.size && slots === lock.slots);
 
-            if (printSize && templateSize !== printSize) {
-                reasons.push('Ukuran harus ' + templateSize);
-            }
+            $checkbox.prop('disabled', !compatible);
+            $card.toggleClass('incompatible', !compatible);
 
-            $checkbox.prop('disabled', !isCompatible);
-            $card.toggleClass('incompatible', !isCompatible);
-
-            if (!isCompatible && $checkbox.is(':checked')) {
-                $checkbox.prop('checked', false);
-            }
-
-            var $statusBadge = $card.find('.template-status-badge');
             var $reason = $card.find('.template-reason');
-            $statusBadge.text(isCompatible ? 'Cocok' : 'Tidak cocok');
-            $reason.text(isCompatible ? '' : reasons.join(' • '));
-
-            if (isCompatible) {
-                compatibleCount += 1;
+            if (!compatible) {
+                $reason.text('Beda ukuran/jumlah foto dengan template lain di paket ini');
+            } else {
+                $reason.text('');
             }
         });
 
-        $('.template-card').each(function () {
-            var $card = $(this);
-            $card.toggleClass('selected', $card.find('.template-checkbox').is(':checked'));
-        });
-
-        renderSelectedPreview();
-
-        if (!photoCount || !printSize) {
+        // Update top hint
+        if (!lock) {
             $templateMatchHint
-                .removeClass('text-danger')
-                .addClass('text-muted')
-                .text('Pilih jumlah foto dan ukuran cetak untuk melihat template yang cocok.');
-            return;
-        }
-
-        if (compatibleCount === 0) {
+                .removeClass('hint-success hint-danger')
+                .find('span').text('Pilih template untuk paket ini. Setelah memilih satu, template lain dengan ukuran berbeda akan dinonaktifkan otomatis.');
+        } else {
             $templateMatchHint
-                .removeClass('text-muted')
-                .addClass('text-danger')
-                .text('Belum ada template yang cocok dengan kombinasi ini. Ubah jumlah foto atau ukuran cetak.');
-            return;
+                .removeClass('hint-danger')
+                .addClass('hint-success')
+                .find('span').text('Paket ini akan menggunakan ukuran ' + lock.size + ' dengan ' + lock.slots + ' foto. Pilih template lain dengan spesifikasi sama jika ingin variasi.');
         }
-
-        $templateMatchHint
-            .removeClass('text-danger')
-            .addClass('text-muted')
-            .text('Ditemukan ' + compatibleCount + ' template yang cocok.');
     }
 
+    /* ─── Template card click ─── */
     $(document).on('click', '.template-card', function (event) {
-        if ($(event.target).is('input, label')) {
-            return;
-        }
+        if ($(event.target).is('input')) return;
+        event.preventDefault();
 
         var $card = $(this);
         var $checkbox = $card.find('.template-checkbox');
-        if ($checkbox.is(':disabled')) {
-            return;
-        }
+        if ($checkbox.is(':disabled')) return;
 
         $checkbox.prop('checked', !$checkbox.is(':checked')).trigger('change');
     });
@@ -154,11 +142,11 @@ $(function () {
         var $card = $(this).closest('.template-card');
         $card.toggleClass('selected', $(this).is(':checked'));
         renderSelectedPreview();
+        refreshTemplateAvailability();
     });
 
-    $photoCount.on('input change', filterTemplateOptions);
-    $printSize.on('change', filterTemplateOptions);
-
-    filterTemplateOptions();
+    /* ─── Initial run ─── */
+    renderSelectedPreview();
+    refreshTemplateAvailability();
 });
 </script>

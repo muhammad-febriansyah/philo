@@ -3,6 +3,7 @@
 use App\Models\Branch;
 use App\Models\Transaction;
 use App\Models\User;
+
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
 use function Pest\Laravel\getJson;
@@ -58,7 +59,7 @@ it('can view branch report page', function () {
     get(route('reports.branches'))
         ->assertSuccessful()
         ->assertViewIs('reports.branches')
-        ->assertSee('Breakdown Pendapatan per Cabang');
+        ->assertSee('Detail Performa Cabang');
 });
 
 it('redirects guests from report pages', function () {

@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
         $this->call(FaqSeeder::class);
         $this->call(GallerySeeder::class);
         $this->call(StepSeeder::class);
+        $this->call(FeatureSeeder::class);
         $this->call(DummyDataSeeder::class);
     }
 }

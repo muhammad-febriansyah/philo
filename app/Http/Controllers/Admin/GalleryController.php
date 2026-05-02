@@ -14,7 +14,12 @@ class GalleryController extends Controller
 {
     public function index(): View
     {
-        return view('galleries.index');
+        $galleries = Gallery::query()
+            ->orderBy('sort_order')
+            ->orderByDesc('id')
+            ->paginate(6);
+
+        return view('galleries.index', compact('galleries'));
     }
 
     public function data(): JsonResponse

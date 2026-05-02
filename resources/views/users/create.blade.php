@@ -122,7 +122,7 @@
                                     <option value="">-- Pilih Role --</option>
                                     <option value="admin" {{ old('role') === 'admin' ? 'selected' : '' }}>Admin</option>
                                     <option value="cabang" {{ old('role') === 'cabang' ? 'selected' : '' }}>Cabang</option>
-                                    <option value="operator" {{ old('role') === 'operator' ? 'selected' : '' }}>Operator</option>
+                                    {{-- <option value="operator" {{ old('role') === 'operator' ? 'selected' : '' }}>Operator</option> --}}
                                 </select>
                                 @error('role')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
@@ -135,7 +135,7 @@
                             </div>
                         </div>
 
-                        <div class="mb-3" id="branchField">
+                        <div class="mb-3" id="branchField" style="display: {{ old('role') === 'cabang' ? 'block' : 'none' }}">
                             <label for="branch_id" class="form-label">Cabang</label>
                             <select id="branch_id" name="branch_id" class="form-select @error('branch_id') is-invalid @enderror">
                                 <option value="">-- Semua Cabang (Admin) --</option>
@@ -216,6 +216,20 @@
         var file = e.dataTransfer.files[0];
         if (file) { input.files = e.dataTransfer.files; showPreview(file); }
     });
+})();
+
+(function () {
+    var roleSelect  = document.getElementById('role');
+    var branchField = document.getElementById('branchField');
+    var branchSelect = document.getElementById('branch_id');
+
+    function toggleBranch() {
+        var show = roleSelect.value === 'cabang';
+        branchField.style.display = show ? 'block' : 'none';
+        branchSelect.required = show;
+    }
+
+    roleSelect.addEventListener('change', toggleBranch);
 })();
 </script>
 @endpush

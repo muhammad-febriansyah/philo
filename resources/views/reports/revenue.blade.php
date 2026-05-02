@@ -22,55 +22,69 @@
         </div>
     </div>
 
-    <div class="row g-4 mb-4">
-        <div class="col-xl-4 col-md-6">
-            <div class="card h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <div class="avatar-sm rounded-circle bg-soft-primary d-flex align-items-center justify-content-center text-primary">
-                                <i class="mdi mdi-wallet-outline font-size-24"></i>
-                            </div>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <p class="text-muted mb-1">Total Revenue</p>
-                            <h4 class="mb-0">Rp {{ number_format($totalRevenue, 0, ',', '.') }}</h4>
-                        </div>
-                    </div>
+    @php
+        $growthBadge = function ($growth) {
+            if ($growth === null) {
+                return '<span class="kpi-growth kpi-growth-muted"><i class="mdi mdi-minus"></i> —</span>';
+            }
+            if ($growth == 0) {
+                return '<span class="kpi-growth kpi-growth-muted"><i class="mdi mdi-equal"></i> 0%</span>';
+            }
+            $isUp = $growth > 0;
+            $cls = $isUp ? 'kpi-growth-up' : 'kpi-growth-down';
+            $icon = $isUp ? 'mdi-arrow-up-bold' : 'mdi-arrow-down-bold';
+            return '<span class="kpi-growth '.$cls.'"><i class="mdi '.$icon.'"></i> '.number_format(abs($growth), 1, ',', '.').'%</span>';
+        };
+    @endphp
+
+    <div class="row g-3 mb-4">
+        <div class="col-xl col-lg-4 col-md-6">
+            <div class="kpi-card kpi-card-primary h-100">
+                <div class="kpi-card-body">
+                    <div class="kpi-icon"><i class="mdi mdi-cash-multiple"></i></div>
+                    <p class="kpi-label">Total Revenue</p>
+                    <h4 class="kpi-value">Rp {{ number_format($totalRevenue, 0, ',', '.') }}</h4>
+                    <span class="kpi-growth kpi-growth-muted"><i class="mdi mdi-infinity"></i> Akumulatif</span>
                 </div>
             </div>
         </div>
-        <div class="col-xl-4 col-md-6">
-            <div class="card h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <div class="avatar-sm rounded-circle bg-soft-success d-flex align-items-center justify-content-center text-success">
-                                <i class="mdi mdi-calendar-month-outline font-size-24"></i>
-                            </div>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <p class="text-muted mb-1">Bulan Ini</p>
-                            <h4 class="mb-0">Rp {{ number_format($thisMonthRevenue, 0, ',', '.') }}</h4>
-                        </div>
-                    </div>
+        <div class="col-xl col-lg-4 col-md-6">
+            <div class="kpi-card kpi-card-success h-100">
+                <div class="kpi-card-body">
+                    <div class="kpi-icon"><i class="mdi mdi-calendar-month-outline"></i></div>
+                    <p class="kpi-label">Bulan Ini</p>
+                    <h4 class="kpi-value">Rp {{ number_format($thisMonthRevenue, 0, ',', '.') }}</h4>
+                    {!! $growthBadge($monthRevenueGrowth) !!}
                 </div>
             </div>
         </div>
-        <div class="col-xl-4 col-md-6">
-            <div class="card h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <div class="avatar-sm rounded-circle bg-soft-info d-flex align-items-center justify-content-center text-info">
-                                <i class="mdi mdi-clock-outline font-size-24"></i>
-                            </div>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <p class="text-muted mb-1">Hari Ini</p>
-                            <h4 class="mb-0">Rp {{ number_format($todayRevenue, 0, ',', '.') }}</h4>
-                        </div>
-                    </div>
+        <div class="col-xl col-lg-4 col-md-6">
+            <div class="kpi-card kpi-card-info h-100">
+                <div class="kpi-card-body">
+                    <div class="kpi-icon"><i class="mdi mdi-clock-outline"></i></div>
+                    <p class="kpi-label">Hari Ini</p>
+                    <h4 class="kpi-value">Rp {{ number_format($todayRevenue, 0, ',', '.') }}</h4>
+                    {!! $growthBadge($todayRevenueGrowth) !!}
+                </div>
+            </div>
+        </div>
+        <div class="col-xl col-lg-4 col-md-6">
+            <div class="kpi-card kpi-card-warning h-100">
+                <div class="kpi-card-body">
+                    <div class="kpi-icon"><i class="mdi mdi-cart-outline"></i></div>
+                    <p class="kpi-label">Total Transaksi</p>
+                    <h4 class="kpi-value">{{ number_format($totalTransactions, 0, ',', '.') }} <span class="kpi-unit">tx</span></h4>
+                    <span class="kpi-sub">{{ number_format($thisMonthTransactions, 0, ',', '.') }} bulan ini · {!! $growthBadge($monthTransactionsGrowth) !!}</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl col-lg-4 col-md-6">
+            <div class="kpi-card kpi-card-purple h-100">
+                <div class="kpi-card-body">
+                    <div class="kpi-icon"><i class="mdi mdi-chart-bell-curve"></i></div>
+                    <p class="kpi-label">Rata-rata per Transaksi</p>
+                    <h4 class="kpi-value">Rp {{ number_format($avgTransaction, 0, ',', '.') }}</h4>
+                    <span class="kpi-sub">Bulan ini Rp {{ number_format($thisMonthAvg, 0, ',', '.') }} · {!! $growthBadge($monthAvgGrowth) !!}</span>
                 </div>
             </div>
         </div>
@@ -204,6 +218,117 @@
 
     .bg-soft-info {
         background-color: rgba(80, 165, 241, 0.12);
+    }
+
+    .kpi-card {
+        background: #fff;
+        border: 1px solid #eef0f3;
+        border-radius: 14px;
+        position: relative;
+        overflow: hidden;
+        transition: transform .15s ease, box-shadow .15s ease;
+    }
+
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+    }
+
+    .kpi-card::before {
+        content: '';
+        position: absolute;
+        inset: 0 0 auto 0;
+        height: 3px;
+        background: var(--kpi-color, #6c757d);
+    }
+
+    .kpi-card-primary { --kpi-color: #556ee6; --kpi-bg: rgba(85,110,230,.10); --kpi-text: #556ee6; }
+    .kpi-card-success { --kpi-color: #34c38f; --kpi-bg: rgba(52,195,143,.10); --kpi-text: #1a9f6e; }
+    .kpi-card-info    { --kpi-color: #50a5f1; --kpi-bg: rgba(80,165,241,.10); --kpi-text: #2f84d0; }
+    .kpi-card-warning { --kpi-color: #f1b44c; --kpi-bg: rgba(241,180,76,.12); --kpi-text: #c98a1f; }
+    .kpi-card-purple  { --kpi-color: #8a5cf0; --kpi-bg: rgba(138,92,240,.10); --kpi-text: #6a3ed0; }
+
+    .kpi-card-body {
+        padding: 18px 18px 16px;
+    }
+
+    .kpi-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: var(--kpi-bg);
+        color: var(--kpi-text);
+        font-size: 22px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 10px;
+    }
+
+    .kpi-label {
+        margin: 0;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #6c7589;
+    }
+
+    .kpi-value {
+        margin: 4px 0 8px;
+        font-size: 22px;
+        font-weight: 700;
+        color: #1f2a44;
+        line-height: 1.15;
+    }
+
+    .kpi-unit {
+        font-size: 13px;
+        font-weight: 600;
+        color: #8590a8;
+        margin-left: 2px;
+    }
+
+    .kpi-sub {
+        display: block;
+        font-size: 11.5px;
+        color: #6c7589;
+        line-height: 1.45;
+    }
+
+    .kpi-growth {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        font-size: 11.5px;
+        font-weight: 600;
+        padding: 3px 8px;
+        border-radius: 999px;
+        line-height: 1;
+    }
+
+    .kpi-growth i {
+        font-size: 13px;
+        line-height: 1;
+    }
+
+    .kpi-growth-up {
+        background: rgba(52,195,143,.14);
+        color: #1a9f6e;
+    }
+
+    .kpi-growth-down {
+        background: rgba(244,106,106,.14);
+        color: #d04444;
+    }
+
+    .kpi-growth-muted {
+        background: rgba(108,117,137,.10);
+        color: #6c7589;
+    }
+
+    @media (max-width: 1199.98px) {
+        .kpi-value { font-size: 20px; }
     }
 </style>
 @endpush

@@ -18,11 +18,10 @@ class UpdatePackageRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
-            'photo_count' => ['required', 'integer', 'min:1'],
-            'print_size' => ['required', 'string', 'max:100'],
+            'print_copies' => ['required', 'integer', 'min:1', 'max:10'],
             'price' => ['required', 'integer', 'min:0'],
             'is_active' => ['sometimes', 'boolean'],
-            'template_ids' => ['sometimes', 'array'],
+            'template_ids' => ['required', 'array', 'min:1'],
             'template_ids.*' => ['integer', 'exists:templates,id'],
         ];
     }
@@ -32,8 +31,7 @@ class UpdatePackageRequest extends FormRequest
         return [
             'name' => 'nama paket',
             'description' => 'deskripsi',
-            'photo_count' => 'jumlah foto',
-            'print_size' => 'ukuran cetak',
+            'print_copies' => 'jumlah cetak',
             'price' => 'harga',
             'template_ids' => 'template',
             'template_ids.*' => 'template',
@@ -48,6 +46,8 @@ class UpdatePackageRequest extends FormRequest
             'min' => ':attribute minimal :min.',
             'max' => ':attribute maksimal :max karakter.',
             'array' => ':attribute tidak valid.',
+            'template_ids.required' => 'Pilih minimal 1 template untuk paket ini.',
+            'template_ids.min' => 'Pilih minimal 1 template untuk paket ini.',
             'template_ids.*.exists' => 'Template yang dipilih tidak ditemukan.',
         ];
     }
@@ -61,33 +61,26 @@ class UpdatePackageRequest extends FormRequest
                 return;
             }
 
-            $photoCount = (int) $this->input('photo_count');
-            $printSize = $this->normalizePrintSize((string) $this->input('print_size'));
-
             $templates = Template::query()
                 ->whereIn('id', $templateIds)
                 ->get(['id', 'name', 'photo_slots', 'print_size']);
 
-            foreach ($templates as $template) {
-                if ((int) $template->photo_slots !== $photoCount) {
-                    $validator->errors()->add(
-                        'template_ids',
-                        "Template {$template->name} punya {$template->photo_slots} slot, jadi tidak cocok untuk paket {$photoCount} foto.",
-                    );
-                }
+            $sizes = $templates->pluck('print_size')->map(fn ($s) => strtoupper(trim((string) $s)))->unique();
+            $slots = $templates->pluck('photo_slots')->map(fn ($n) => (int) $n)->unique();
 
-                if ($this->normalizePrintSize((string) $template->print_size) !== $printSize) {
-                    $validator->errors()->add(
-                        'template_ids',
-                        "Template {$template->name} berukuran {$template->print_size}, jadi tidak cocok untuk paket {$this->input('print_size')}.",
-                    );
-                }
+            if ($sizes->count() > 1) {
+                $validator->errors()->add(
+                    'template_ids',
+                    'Semua template dalam satu paket harus punya ukuran cetak yang sama. Ditemukan: '.$sizes->implode(', ').'.',
+                );
+            }
+
+            if ($slots->count() > 1) {
+                $validator->errors()->add(
+                    'template_ids',
+                    'Semua template dalam satu paket harus punya jumlah slot foto yang sama. Ditemukan: '.$slots->implode(', ').' slot.',
+                );
             }
         });
-    }
-
-    private function normalizePrintSize(string $value): string
-    {
-        return strtoupper(trim($value));
     }
 }

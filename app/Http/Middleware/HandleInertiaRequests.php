@@ -45,6 +45,7 @@ class HandleInertiaRequests extends Middleware
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'settings' => Setting::getMany([
                 'site_name',
+                'site_description',
                 'logo_path',
                 'favicon_path',
                 'instagram_url',

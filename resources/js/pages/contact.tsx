@@ -1,10 +1,9 @@
-import { usePage } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import type { ComponentType } from 'react';
 import {
     ArrowRight,
     ArrowUpRight,
     CalendarCheck2,
-    CheckCircle2,
     Clock3,
     Facebook,
     Globe2,
@@ -12,7 +11,6 @@ import {
     MapPin,
     MessageCircle,
     Music2,
-    PhoneCall,
     Send,
     ShieldCheck,
     Sparkles,
@@ -20,7 +18,6 @@ import {
     Zap,
 } from 'lucide-react';
 import HomeLayout from '@/layouts/home-layout';
-import PageHeader from '@/components/page-header';
 
 const YELLOW = '#E8C900';
 const YELLOW_SOFT = 'rgba(232,201,0,0.13)';
@@ -38,14 +35,13 @@ type ContactSettings = {
 
 type ContactItem = {
     label: string;
-    value: string;
+    handle: string;
     href: string;
     icon: ComponentType<{ className?: string; style?: React.CSSProperties }>;
     gradient: string;
-    iconBg: string;
-    iconColor: string;
-    note: string;
-    badge: string;
+    accent: string;
+    cta: string;
+    tag: string;
 };
 
 function normalizeWhatsapp(number?: string | null) {
@@ -57,360 +53,292 @@ function formatWhatsappLabel(number: string) {
     return number.startsWith('0') ? number : `+${number}`;
 }
 
+function extractHandle(url: string): string {
+    const cleaned = url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const lastSegment = cleaned.split('/').pop() || cleaned;
+    const handle = lastSegment.replace(/^@/, '');
+    return handle ? `@${handle}` : cleaned;
+}
+
 export default function ContactPage() {
-    const { contact } = usePage<{
-        contact: ContactSettings;
-    }>().props;
+    const { contact } = usePage<{ contact: ContactSettings }>().props;
 
     const whatsappNumber = normalizeWhatsapp(contact.whatsapp_number);
     const whatsappHref = whatsappNumber ? `https://wa.me/${whatsappNumber}` : null;
 
-    const contactItems: ContactItem[] = [
-        contact.whatsapp_number
-            ? {
-                  label: 'WhatsApp',
-                  value: formatWhatsappLabel(whatsappNumber),
-                  href: `https://wa.me/${whatsappNumber}`,
-                  icon: MessageCircle,
-                  gradient: 'from-emerald-50 to-teal-50',
-                  iconBg: '#dcfce7',
-                  iconColor: '#16a34a',
-                  note: 'Paling cocok untuk cek jadwal, booking, dan kebutuhan cepat.',
-                  badge: 'Paling cepat',
-              }
-            : null,
+    const channels: ContactItem[] = [
         contact.instagram_url
             ? {
                   label: 'Instagram',
-                  value: contact.instagram_url.replace(/^https?:\/\//, ''),
+                  handle: extractHandle(contact.instagram_url),
                   href: contact.instagram_url,
                   icon: Instagram,
-                  gradient: 'from-pink-50 to-orange-50',
-                  iconBg: '#fce7f3',
-                  iconColor: '#db2777',
-                  note: 'Lihat update terbaru, style booth, dan referensi event.',
-                  badge: 'Inspirasi visual',
+                  gradient: 'linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
+                  accent: '#dc2743',
+                  cta: 'Lihat profil',
+                  tag: 'Inspirasi visual',
               }
             : null,
         contact.facebook_url
             ? {
                   label: 'Facebook',
-                  value: contact.facebook_url.replace(/^https?:\/\//, ''),
+                  handle: extractHandle(contact.facebook_url),
                   href: contact.facebook_url,
                   icon: Facebook,
-                  gradient: 'from-blue-50 to-sky-50',
-                  iconBg: '#dbeafe',
-                  iconColor: '#2563eb',
-                  note: 'Terhubung untuk informasi layanan dan aktivitas brand.',
-                  badge: 'Komunitas',
+                  gradient: 'linear-gradient(135deg, #1877f2 0%, #0c63d4 100%)',
+                  accent: '#1877f2',
+                  cta: 'Kunjungi page',
+                  tag: 'Komunitas',
               }
             : null,
         contact.x_url
             ? {
                   label: 'X / Twitter',
-                  value: contact.x_url.replace(/^https?:\/\//, ''),
+                  handle: extractHandle(contact.x_url),
                   href: contact.x_url,
                   icon: Globe2,
-                  gradient: 'from-zinc-50 to-slate-50',
-                  iconBg: '#f4f4f5',
-                  iconColor: '#18181b',
-                  note: 'Cocok untuk update singkat dan komunikasi publik.',
-                  badge: 'Update real-time',
+                  gradient: 'linear-gradient(135deg, #1f2937 0%, #000 100%)',
+                  accent: '#0f0f0f',
+                  cta: 'Ikuti updates',
+                  tag: 'Update real-time',
               }
             : null,
         contact.tiktok_url
             ? {
                   label: 'TikTok',
-                  value: contact.tiktok_url.replace(/^https?:\/\//, ''),
+                  handle: extractHandle(contact.tiktok_url),
                   href: contact.tiktok_url,
                   icon: Music2,
-                  gradient: 'from-fuchsia-50 to-cyan-50',
-                  iconBg: '#fdf4ff',
-                  iconColor: '#a21caf',
-                  note: 'Intip mood event, video booth, dan momen behind the scenes.',
-                  badge: 'Video & reels',
+                  gradient: 'linear-gradient(135deg, #25f4ee 0%, #000 50%, #fe2c55 100%)',
+                  accent: '#fe2c55',
+                  cta: 'Tonton video',
+                  tag: 'Video & reels',
               }
             : null,
     ].filter(Boolean) as ContactItem[];
 
-    const steps = [
-        { num: '01', text: 'Ceritakan jenis acara, tanggal, dan lokasi.' },
-        { num: '02', text: 'Kami bantu arahkan paket atau opsi custom yang relevan.' },
-        { num: '03', text: 'Lanjutkan koordinasi teknis sampai hari event.' },
-    ];
-
-    const helperPoints = [
+    const reasons = [
         {
             icon: CalendarCheck2,
-            title: 'Booking event lebih rapi',
-            description: 'Kirim tanggal, kota, dan jenis acara. Tim kami bantu arahkan paket yang paling pas.',
+            title: 'Booking event',
+            description: 'Kirim tanggal, kota, dan jenis acara — kami arahkan ke paket yang paling pas.',
         },
         {
             icon: Sparkles,
-            title: 'Kebutuhan custom campaign',
-            description: 'Kami bisa diskusikan aktivasi brand, template, sampai pengalaman booth yang lebih personal.',
+            title: 'Custom campaign',
+            description: 'Aktivasi brand, template khusus, sampai pengalaman booth yang lebih personal.',
         },
-        {
-            icon: ShieldCheck,
-            title: 'Koordinasi lebih tenang',
-            description: 'Mulai dari pertanyaan awal sampai hari acara, semua bisa disusun lewat satu titik komunikasi.',
-        },
-    ];
-
-    const serviceHighlights = [
         {
             icon: Clock3,
             title: 'Respon cepat',
-            stat: '< 1 jam',
-            description: 'WhatsApp jadi jalur utama untuk pertanyaan urgent dan pengecekan ketersediaan jadwal.',
+            description: 'WhatsApp dijawab kurang dari 1 jam pada jam operasional.',
         },
         {
-            icon: PhoneCall,
-            title: 'Brief lebih jelas',
-            stat: '3 langkah',
-            description: 'Bagikan rundown acara, ekspektasi tamu, dan kebutuhan cetak agar rekomendasinya lebih akurat.',
-        },
-        {
-            icon: MapPin,
-            title: 'Koordinasi lokasi',
-            stat: 'Multi-kota',
-            description: 'Peta di bawah memudahkan tamu, partner, atau tim event menemukan titik yang relevan.',
+            icon: ShieldCheck,
+            title: 'Koordinasi rapi',
+            description: 'Satu titik komunikasi dari pertanyaan awal sampai hari acara.',
         },
     ];
 
     return (
         <HomeLayout title="Kontak Kami">
-            <PageHeader
-                title="Kontak Kami"
-                description="Hubungi kami untuk reservasi, pertanyaan layanan, atau kebutuhan event photobooth yang lebih personal."
-                breadcrumbs={[
-                    { label: 'Beranda', href: '/' },
-                    { label: 'Kontak Kami' },
-                ]}
-            />
-
-            {/* ── HERO SECTION ── */}
-            <section className="relative overflow-hidden">
+            {/* ── HERO ── */}
+            <section className="relative overflow-hidden pt-28 pb-12 sm:pt-36 sm:pb-20">
                 {/* Decorative blobs */}
                 <div className="pointer-events-none absolute inset-0" aria-hidden>
                     <div
-                        className="absolute -top-20 -left-20 h-[500px] w-[500px] rounded-full opacity-40 blur-[120px]"
-                        style={{ background: 'radial-gradient(circle, rgba(232,201,0,0.3) 0%, transparent 70%)' }}
+                        className="absolute -top-20 -left-20 size-[500px] rounded-full opacity-50 blur-[120px]"
+                        style={{ background: 'radial-gradient(circle, rgba(232,201,0,0.25) 0%, transparent 70%)' }}
                     />
                     <div
-                        className="absolute top-1/3 -right-20 h-[400px] w-[400px] rounded-full opacity-30 blur-[100px]"
-                        style={{ background: 'radial-gradient(circle, rgba(232,201,0,0.2) 0%, transparent 70%)' }}
+                        className="absolute top-1/3 -right-20 size-96 rounded-full opacity-30 blur-[100px]"
+                        style={{ background: 'radial-gradient(circle, rgba(232,201,0,0.18) 0%, transparent 70%)' }}
                     />
                 </div>
 
-                <div className="relative mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16">
-                    <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-10">
+                <div className="relative mx-auto max-w-6xl px-4 sm:px-8">
+                    {/* Breadcrumb */}
+                    <nav className="mb-5 flex items-center gap-1.5 text-xs text-zinc-500 sm:mb-7 sm:gap-2 sm:text-sm">
+                        <Link href="/" className="transition hover:text-zinc-800">Beranda</Link>
+                        <span className="text-zinc-300">›</span>
+                        <span className="font-semibold" style={{ color: '#78680a' }}>Kontak Kami</span>
+                    </nav>
 
-                        {/* ── LEFT: Hero Copy ── */}
-                        <div className="flex flex-col justify-center">
-                            {/* Badge row */}
-                            <div className="flex flex-wrap items-center gap-3">
+                    <div className="grid gap-7 lg:grid-cols-[1.15fr_0.85fr] lg:items-center lg:gap-10">
+                        {/* LEFT: Hero copy */}
+                        <div>
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                                 <span
-                                    className="inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-[11px] font-semibold tracking-[0.22em] uppercase"
+                                    className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-[0.18em] uppercase sm:px-3 sm:py-1.5 sm:text-[11px] sm:tracking-[0.22em]"
                                     style={{ borderColor: 'rgba(232,201,0,0.4)', background: YELLOW_SOFT, color: '#78680a' }}
                                 >
-                                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: YELLOW }} />
+                                    <span className="size-1.5 rounded-full" style={{ background: YELLOW }} />
                                     Kontak Studio
                                 </span>
-                                <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-950 px-4 py-1.5 text-[11px] font-semibold tracking-[0.18em] text-white/90 uppercase">
-                                    <Zap className="h-3 w-3" style={{ color: YELLOW }} />
-                                    Respon Cepat
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-950 px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] text-white/90 uppercase sm:px-3 sm:py-1.5 sm:text-[11px] sm:tracking-[0.18em]">
+                                    <Zap className="size-3" style={{ color: YELLOW }} />
+                                    Respon &lt; 1 jam
                                 </span>
                             </div>
 
-                            {/* Heading */}
-                            <h1 className="mt-7 text-4xl leading-[1.07] font-black text-zinc-950 sm:text-5xl lg:text-[3.5rem] lg:leading-[1.05]">
-                                Satu titik kontak{' '}
-                                <span
-                                    className="relative inline-block"
-                                    style={{ color: '#78680a' }}
-                                >
+                            <h1
+                                className="mt-4 text-[1.85rem] leading-[1.1] font-extrabold tracking-tight text-zinc-950 sm:mt-6 sm:text-5xl sm:leading-[1.05] lg:text-[3.4rem]"
+                                style={{ fontFamily: "'Poppins', sans-serif" }}
+                            >
+                                Punya pertanyaan?
+                                <br />
+                                <span className="relative inline-block">
                                     <span
-                                        className="absolute inset-x-0 bottom-1 h-[6px] rounded-full"
-                                        style={{ background: YELLOW, opacity: 0.7, zIndex: -1, transform: 'scaleX(1.04)' }}
+                                        className="absolute inset-x-0 bottom-1 h-2 -z-10 rounded-sm sm:h-3"
+                                        style={{ background: YELLOW, opacity: 0.55 }}
                                     />
-                                    untuk semua
-                                </span>{' '}
-                                kebutuhanmu.
+                                    <span className="relative">Kami siap bantu.</span>
+                                </span>
                             </h1>
 
-                            <p className="mt-6 max-w-xl text-base leading-8 text-zinc-500 sm:text-[1.05rem]">
+                            <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-500 sm:mt-5 sm:text-[1.05rem] sm:leading-7">
                                 {contact.site_description ||
-                                    'Dari booking foto wisuda, pernikahan, sampai aktivasi brand — kami siap bantu semua persiapan dari satu kanal komunikasi yang simpel.'}
+                                    'Dari booking foto wisuda, pernikahan, sampai aktivasi brand — semua bisa disusun dari satu kanal komunikasi yang simpel.'}
                             </p>
 
-                            {/* CTA Buttons */}
-                            <div className="mt-9 flex flex-wrap items-center gap-3">
+                            {/* CTAs */}
+                            <div className="mt-5 flex flex-wrap items-center gap-2 sm:mt-8 sm:gap-3">
                                 {whatsappHref && (
                                     <a
                                         href={whatsappHref}
                                         target="_blank"
                                         rel="noreferrer"
-                                        className="group inline-flex items-center gap-2.5 rounded-full px-7 py-3.5 text-sm font-bold text-zinc-950 transition-all hover:-translate-y-0.5"
-                                        style={{ background: YELLOW }}
+                                        className="group inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[13px] font-bold text-zinc-950 transition-all hover:-translate-y-0.5 active:scale-95 sm:gap-2.5 sm:px-7 sm:py-3.5 sm:text-sm"
+                                        style={{ background: YELLOW, boxShadow: '0 8px 28px rgba(232,201,0,0.45)' }}
                                     >
-                                        <MessageCircle className="h-4 w-4" />
+                                        <MessageCircle className="size-4" />
                                         Chat via WhatsApp
-                                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                                        <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
                                     </a>
                                 )}
                                 <a
-                                    href="#contact-channels"
-                                    className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-6 py-3.5 text-sm font-semibold text-zinc-700 transition hover:border-zinc-800 hover:text-zinc-950"
+                                    href="#channels"
+                                    className="inline-flex items-center gap-1.5 rounded-full border border-zinc-300 bg-white px-4 py-2.5 text-[13px] font-semibold text-zinc-700 transition hover:border-zinc-800 hover:text-zinc-950 sm:gap-2 sm:px-6 sm:py-3.5 sm:text-sm"
                                 >
                                     Lihat semua kanal
                                     <ArrowDownIcon />
                                 </a>
                             </div>
 
-                            {/* Trust indicators */}
-                            <div className="mt-10 flex flex-wrap items-center gap-5 border-t border-zinc-100 pt-7">
+                            {/* Trust strip */}
+                            <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-zinc-100 pt-4 sm:mt-8 sm:gap-x-6 sm:gap-y-2 sm:pt-6">
                                 {[
                                     { icon: Star, label: 'Rating 4.9+' },
-                                    { icon: CheckCircle2, label: 'QRIS tersedia' },
-                                    { icon: Send, label: 'Respon < 1 jam' },
+                                    { icon: Send, label: 'Respon cepat' },
+                                    { icon: ShieldCheck, label: 'Koordinasi 1 kanal' },
                                 ].map(({ icon: Icon, label }) => (
-                                    <span key={label} className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-500">
-                                        <Icon className="h-3.5 w-3.5" style={{ color: YELLOW }} />
+                                    <span key={label} className="inline-flex items-center gap-1 text-[11px] font-semibold text-zinc-500 sm:gap-1.5 sm:text-xs">
+                                        <Icon className="size-3 sm:size-3.5" style={{ color: YELLOW }} />
                                         {label}
                                     </span>
                                 ))}
                             </div>
                         </div>
 
-                        {/* ── RIGHT: Quick Contact + Steps ── */}
-                        <div className="flex flex-col gap-5">
-                            {/* Dark WhatsApp card */}
+                        {/* RIGHT: WhatsApp dark card */}
+                        <div
+                            className="relative overflow-hidden rounded-[1.5rem] p-5 text-white sm:rounded-[2rem] sm:p-7 lg:p-8"
+                            style={{ background: 'linear-gradient(145deg, #18181b 0%, #27272a 100%)' }}
+                        >
                             <div
-                                className="relative overflow-hidden rounded-[2rem] p-7 text-white"
-                                style={{ background: 'linear-gradient(145deg, #18181b 0%, #27272a 100%)' }}
-                            >
-                                {/* Glow accent */}
-                                <div
-                                    className="pointer-events-none absolute -top-8 -right-8 h-40 w-40 rounded-full blur-3xl"
-                                    style={{ background: 'rgba(232,201,0,0.15)' }}
-                                    aria-hidden
-                                />
-
-                                <div className="relative">
-                                    <div className="flex items-center justify-between gap-3">
-                                        <p className="text-[10px] font-bold tracking-[0.3em] text-white/40 uppercase">Quick Contact</p>
-                                        <span
-                                            className="flex h-9 w-9 items-center justify-center rounded-xl"
-                                            style={{ background: YELLOW_MEDIUM }}
-                                        >
-                                            <MessageCircle className="h-4 w-4" style={{ color: YELLOW }} />
-                                        </span>
-                                    </div>
-
-                                    <h3 className="mt-5 text-2xl font-extrabold leading-snug sm:text-[1.8rem]">
-                                        Kanal tercepat untuk mulai ngobrol
-                                    </h3>
-                                    <p className="mt-3 text-sm leading-7 text-white/55">
-                                        Untuk booking, cek jadwal, atau pertanyaan mendadak — WhatsApp adalah jalur terbaik agar responnya instan.
-                                    </p>
-
-                                    {/* Number box */}
-                                    <div
-                                        className="mt-6 flex items-center justify-between rounded-2xl border p-4"
-                                        style={{ borderColor: 'rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)' }}
-                                    >
-                                        <div>
-                                            <p className="text-[10px] font-bold tracking-[0.25em] text-white/35 uppercase">Nomor Aktif</p>
-                                            <p className="mt-1.5 text-lg font-bold text-white">
-                                                {whatsappNumber ? formatWhatsappLabel(whatsappNumber) : 'Belum tersedia'}
-                                            </p>
-                                        </div>
-                                        <span
-                                            className="rounded-full border px-3 py-1 text-[11px] font-semibold"
-                                            style={{ borderColor: 'rgba(232,201,0,0.3)', color: YELLOW }}
-                                        >
-                                            Fast lane
-                                        </span>
-                                    </div>
-
-                                    {whatsappHref ? (
-                                        <a
-                                            href={whatsappHref}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-3.5 text-sm font-bold text-zinc-950 transition hover:bg-zinc-100"
-                                        >
-                                            Mulai chat sekarang
-                                            <ArrowUpRight className="h-4 w-4" />
-                                        </a>
-                                    ) : (
-                                        <p className="mt-5 text-sm leading-6 text-white/40">
-                                            Tambahkan nomor WhatsApp dari pengaturan umum untuk mengaktifkan tombol ini.
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Steps card */}
-                            <div className="rounded-[2rem] bg-white p-6 sm:p-7">
-                                <div className="flex items-center justify-between gap-3">
-                                    <div>
-                                        <p className="text-[10px] font-bold tracking-[0.3em] text-zinc-400 uppercase">Alur Booking</p>
-                                        <h3 className="mt-2 text-xl font-extrabold text-zinc-950">3 langkah simpel</h3>
-                                    </div>
+                                className="pointer-events-none absolute -top-12 -right-12 size-48 rounded-full blur-3xl"
+                                style={{ background: 'rgba(232,201,0,0.18)' }}
+                            />
+                            <div className="relative">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-[10px] font-bold tracking-[0.25em] text-white/40 uppercase sm:tracking-[0.3em]">Quick contact</p>
                                     <span
-                                        className="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-black text-zinc-950"
-                                        style={{ background: YELLOW }}
+                                        className="flex size-8 items-center justify-center rounded-xl sm:size-9"
+                                        style={{ background: YELLOW_MEDIUM }}
                                     >
-                                        3
+                                        <MessageCircle className="size-4" style={{ color: YELLOW }} />
                                     </span>
                                 </div>
 
-                                <div className="mt-5 space-y-3">
-                                    {steps.map(({ num, text }) => (
-                                        <div key={num} className="flex items-start gap-4 rounded-2xl bg-zinc-50/60 p-4">
-                                            <span
-                                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-black text-zinc-950"
-                                                style={{ background: YELLOW_SOFT }}
-                                            >
-                                                {num}
-                                            </span>
-                                            <p className="pt-0.5 text-sm leading-6 text-zinc-600">{text}</p>
-                                        </div>
-                                    ))}
+                                <h3 className="mt-4 text-xl leading-snug font-extrabold sm:mt-5 sm:text-2xl">
+                                    Mulai ngobrol di WhatsApp
+                                </h3>
+                                <p className="mt-2 text-[13px] leading-5 text-white/55 sm:text-sm sm:leading-6">
+                                    Untuk booking, cek jadwal, atau pertanyaan urgent — paling cepat lewat WA.
+                                </p>
+
+                                <div
+                                    className="mt-4 flex items-center justify-between rounded-xl border p-3 sm:mt-5 sm:rounded-2xl sm:p-4"
+                                    style={{ borderColor: 'rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)' }}
+                                >
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase sm:tracking-[0.25em]">Nomor aktif</p>
+                                        <p className="mt-0.5 truncate text-base font-bold sm:mt-1 sm:text-lg">
+                                            {whatsappNumber ? formatWhatsappLabel(whatsappNumber) : 'Belum tersedia'}
+                                        </p>
+                                    </div>
+                                    {whatsappNumber && (
+                                        <span
+                                            className="ml-2 shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold sm:px-2.5 sm:py-1"
+                                            style={{ borderColor: 'rgba(232,201,0,0.3)', color: YELLOW }}
+                                        >
+                                            FAST
+                                        </span>
+                                    )}
                                 </div>
+
+                                {whatsappHref ? (
+                                    <a
+                                        href={whatsappHref}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white py-3 text-[13px] font-bold text-zinc-950 transition hover:bg-zinc-100 sm:mt-5 sm:rounded-2xl sm:py-3.5 sm:text-sm"
+                                    >
+                                        Mulai chat sekarang
+                                        <ArrowUpRight className="size-4" />
+                                    </a>
+                                ) : (
+                                    <p className="mt-4 text-[13px] text-white/40 sm:mt-5 sm:text-sm">
+                                        Tambahkan nomor WhatsApp dari pengaturan umum.
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* ── FEATURE POINTS STRIP ── */}
-            <section className="relative overflow-hidden px-4 sm:px-6">
+            {/* ── REASONS / VALUE PROPS ── */}
+            <section className="px-4 sm:px-8">
                 <div className="mx-auto max-w-6xl">
                     <div
-                        className="relative overflow-hidden rounded-[2rem] px-6 py-8 sm:px-10 sm:py-10"
+                        className="relative overflow-hidden rounded-[1.5rem] px-5 py-6 sm:rounded-[2rem] sm:px-10 sm:py-9"
                         style={{ background: 'linear-gradient(135deg, #18181b 0%, #27272a 100%)' }}
                     >
-                        {/* Yellow decorative line */}
                         <div
                             className="absolute inset-x-0 top-0 h-[3px]"
                             style={{ background: `linear-gradient(90deg, transparent, ${YELLOW}, transparent)` }}
                         />
+                        <p className="text-[10px] font-bold tracking-[0.25em] text-white/40 uppercase sm:tracking-[0.3em]">Kenapa hubungi kami</p>
+                        <h2
+                            className="mt-1.5 max-w-xl text-lg leading-snug font-extrabold text-white sm:mt-2 sm:text-3xl sm:leading-tight"
+                            style={{ fontFamily: "'Poppins', sans-serif" }}
+                        >
+                            Komunikasi rapi, hasil event lebih tenang.
+                        </h2>
 
-                        <div className="grid gap-6 sm:grid-cols-3">
-                            {helperPoints.map(({ icon: Icon, title, description }) => (
-                                <div key={title} className="group flex flex-col gap-4">
+                        <div className="mt-5 grid gap-4 sm:mt-8 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
+                            {reasons.map(({ icon: Icon, title, description }) => (
+                                <div key={title} className="flex gap-3 sm:flex-col sm:gap-3">
                                     <div
-                                        className="flex h-12 w-12 items-center justify-center rounded-2xl border transition-all group-hover:scale-105"
+                                        className="flex size-10 shrink-0 items-center justify-center rounded-xl border sm:size-11"
                                         style={{ background: YELLOW_MEDIUM, borderColor: 'rgba(232,201,0,0.3)' }}
                                     >
-                                        <Icon className="h-5 w-5" style={{ color: YELLOW }} />
+                                        <Icon className="size-4 sm:size-5" style={{ color: YELLOW }} />
                                     </div>
                                     <div>
-                                        <h3 className="text-base font-bold text-white">{title}</h3>
-                                        <p className="mt-1.5 text-sm leading-6 text-white/50">{description}</p>
+                                        <h3 className="text-sm font-bold text-white sm:text-base">{title}</h3>
+                                        <p className="mt-0.5 text-[13px] leading-5 text-white/55 sm:mt-1 sm:text-sm sm:leading-6">{description}</p>
                                     </div>
                                 </div>
                             ))}
@@ -419,254 +347,217 @@ export default function ContactPage() {
                 </div>
             </section>
 
-            {/* ── CONTACT CHANNELS ── */}
-            <section id="contact-channels" className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
-                <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                    <div className="max-w-xl">
-                        <span
-                            className="inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-[11px] font-bold tracking-[0.22em] uppercase"
-                            style={{ borderColor: 'rgba(232,201,0,0.35)', background: YELLOW_SOFT, color: '#78680a' }}
-                        >
-                            <span className="h-1.5 w-1.5 rounded-full" style={{ background: YELLOW }} />
-                            Kanal Aktif
-                        </span>
-                        <h2 className="mt-4 text-3xl font-extrabold text-zinc-950 sm:text-4xl">
-                            Pilih kanal yang paling{' '}
-                            <span style={{ color: '#78680a' }}>nyaman</span> buat kamu
-                        </h2>
-                        <p className="mt-3 text-sm leading-7 text-zinc-500 sm:text-base">
-                            Semua tombol di bawah langsung mengarah ke kanal terkait — bisa langsung mulai percakapan tanpa ribet.
-                        </p>
-                    </div>
-                    <div
-                        className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold text-zinc-900"
-                        style={{ borderColor: 'rgba(232,201,0,0.4)', background: YELLOW_SOFT }}
-                    >
-                        <span className="relative flex h-2 w-2">
+            {/* ── CHANNELS ── */}
+            <section id="channels" className="px-4 py-10 sm:px-8 sm:py-20">
+                <div className="mx-auto max-w-6xl">
+                    <div className="mb-6 flex flex-wrap items-end justify-between gap-3 sm:mb-9">
+                        <div className="max-w-xl">
                             <span
-                                className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
-                                style={{ background: YELLOW }}
-                            />
-                            <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: YELLOW }} />
-                        </span>
-                        {contactItems.length} kanal aktif
-                    </div>
-                </div>
-
-                {contactItems.length > 0 ? (
-                    <div className="mt-8 space-y-3">
-                        {contactItems.map((item, i) => {
-                            const Icon = item.icon;
-                            const isFeatured = i === 0;
-
-                            return isFeatured ? (
-                                /* Featured card — dark, full width */
-                                <a
-                                    key={item.label}
-                                    href={item.href}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="group relative flex items-center justify-between gap-6 overflow-hidden rounded-[1.8rem] p-6 transition-all hover:-translate-y-0.5 sm:p-8"
-                                    style={{ background: 'linear-gradient(135deg, #18181b 0%, #27272a 100%)' }}
-                                >
-                                    {/* Glow */}
-                                    <div
-                                        className="pointer-events-none absolute -top-10 -left-10 h-40 w-40 rounded-full blur-3xl"
-                                        style={{ background: `${item.iconColor}22` }}
-                                    />
-                                    <div className="relative flex items-center gap-5">
-                                        <div
-                                            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl"
-                                            style={{ background: `${item.iconColor}22` }}
-                                        >
-                                            <Icon className="h-6 w-6" style={{ color: item.iconColor }} />
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center gap-2.5">
-                                                <p className="text-[10px] font-bold tracking-[0.25em] text-white/40 uppercase">{item.label}</p>
-                                                <span
-                                                    className="rounded-full px-2.5 py-0.5 text-[10px] font-bold text-black"
-                                                    style={{ background: YELLOW }}
-                                                >
-                                                    {item.badge}
-                                                </span>
-                                            </div>
-                                            <p className="mt-1 text-lg font-extrabold text-white">{item.value}</p>
-                                            <p className="mt-1 text-sm text-white/50">{item.note}</p>
-                                        </div>
-                                    </div>
+                                className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-[0.18em] uppercase sm:px-3 sm:tracking-[0.22em]"
+                                style={{ borderColor: 'rgba(232,201,0,0.35)', background: YELLOW_SOFT, color: '#78680a' }}
+                            >
+                                <span className="size-1.5 rounded-full" style={{ background: YELLOW }} />
+                                Kanal aktif
+                            </span>
+                            <h2
+                                className="mt-2 text-2xl font-extrabold tracking-tight text-zinc-950 sm:mt-3 sm:text-4xl"
+                                style={{ fontFamily: "'Poppins', sans-serif" }}
+                            >
+                                Pilih kanal yang paling nyaman
+                            </h2>
+                            <p className="mt-1.5 text-[13px] leading-5 text-zinc-500 sm:mt-2 sm:text-base sm:leading-6">
+                                Klik kanal di bawah untuk langsung terhubung.
+                            </p>
+                        </div>
+                        {channels.length > 0 && (
+                            <div
+                                className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold text-zinc-900 sm:gap-2 sm:px-3 sm:py-1.5 sm:text-xs"
+                                style={{ borderColor: 'rgba(232,201,0,0.4)', background: YELLOW_SOFT }}
+                            >
+                                <span className="relative flex size-2">
                                     <span
-                                        className="relative shrink-0 flex h-11 w-11 items-center justify-center rounded-2xl text-black transition group-hover:brightness-110"
+                                        className="absolute inline-flex size-full animate-ping rounded-full opacity-75"
                                         style={{ background: YELLOW }}
-                                    >
-                                        <ArrowUpRight className="h-5 w-5" />
-                                    </span>
-                                </a>
-                            ) : (
-                                /* Regular row */
-                                <a
-                                    key={item.label}
-                                    href={item.href}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="group relative flex items-center justify-between gap-4 overflow-hidden rounded-[1.6rem] bg-white px-6 py-5 transition-all hover:-translate-y-0.5"
-                                >
-                                    {/* Left color stripe */}
-                                    <div
-                                        className="absolute inset-y-0 left-0 w-1 rounded-l-[1.6rem] opacity-60"
-                                        style={{ background: item.iconColor }}
                                     />
-                                    <div className="flex items-center gap-4 pl-3">
+                                    <span className="relative inline-flex size-2 rounded-full" style={{ background: YELLOW }} />
+                                </span>
+                                {channels.length} kanal aktif
+                            </div>
+                        )}
+                    </div>
+
+                    {channels.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+                            {channels.map((item) => {
+                                const Icon = item.icon;
+                                return (
+                                    <a
+                                        key={item.label}
+                                        href={item.href}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="group relative isolate flex aspect-square flex-col justify-between overflow-hidden rounded-2xl p-3.5 text-white transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] sm:aspect-[4/5] sm:rounded-[1.8rem] sm:p-6"
+                                        style={{
+                                            background: item.gradient,
+                                            boxShadow: `0 10px 30px -10px ${item.accent}55`,
+                                        }}
+                                    >
+                                        {/* Decorative orbs */}
                                         <div
-                                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-transform group-hover:scale-105"
-                                            style={{ background: item.iconBg }}
-                                        >
-                                            <Icon className="h-5 w-5" style={{ color: item.iconColor }} />
+                                            className="pointer-events-none absolute -top-12 -right-12 size-32 rounded-full opacity-50 blur-3xl transition-all duration-500 group-hover:scale-125 group-hover:opacity-70 sm:-top-16 sm:-right-16 sm:size-48"
+                                            style={{ background: 'rgba(255,255,255,0.25)' }}
+                                            aria-hidden
+                                        />
+                                        <div
+                                            className="pointer-events-none absolute -bottom-16 -left-8 size-32 rounded-full opacity-30 blur-3xl sm:-bottom-20 sm:-left-10 sm:size-44"
+                                            style={{ background: 'rgba(0,0,0,0.4)' }}
+                                            aria-hidden
+                                        />
+
+                                        {/* Top: tag + arrow */}
+                                        <div className="relative z-10 flex items-center justify-between">
+                                            <span className="hidden rounded-full border border-white/30 bg-white/15 px-2 py-0.5 text-[9px] font-bold tracking-wider text-white/95 uppercase backdrop-blur-md sm:inline-flex sm:px-2.5 sm:py-1 sm:text-[10px] sm:tracking-widest">
+                                                {item.tag}
+                                            </span>
+                                            <span className="ml-auto flex size-7 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-md transition group-hover:bg-white group-hover:text-zinc-950 sm:size-9">
+                                                <ArrowUpRight className="size-3.5 sm:size-4" />
+                                            </span>
                                         </div>
-                                        <div className="min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <p className="text-[10px] font-bold tracking-[0.2em] text-zinc-400 uppercase">{item.label}</p>
-                                                <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-500">
-                                                    {item.badge}
+
+                                        {/* Big icon centered */}
+                                        <div className="relative z-10 flex flex-1 items-center justify-center">
+                                            <div className="relative">
+                                                <span
+                                                    className="absolute inset-0 -z-10 rounded-2xl blur-2xl sm:rounded-3xl"
+                                                    style={{ background: 'rgba(255,255,255,0.4)' }}
+                                                />
+                                                <span className="flex size-12 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-md transition duration-300 group-hover:scale-110 group-hover:bg-white/25 sm:size-20 sm:rounded-3xl">
+                                                    <Icon className="size-6 text-white sm:size-10" />
                                                 </span>
                                             </div>
-                                            <p className="mt-0.5 truncate text-sm font-bold text-zinc-950">{item.value}</p>
                                         </div>
-                                    </div>
-                                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 transition group-hover:bg-zinc-950 group-hover:text-white">
-                                        <ArrowUpRight className="h-3.5 w-3.5" />
-                                    </span>
-                                </a>
-                            );
-                        })}
-                    </div>
-                ) : (
-                    <div className="mt-8 rounded-[1.6rem] bg-zinc-50 px-6 py-10 text-center text-sm leading-7 text-zinc-400">
-                        Kanal kontak belum diisi. Tambahkan WhatsApp atau sosial media dari pengaturan umum.
-                    </div>
-                )}
+
+                                        {/* Bottom: handle + cta */}
+                                        <div className="relative z-10">
+                                            <p className="text-[9px] font-bold tracking-[0.18em] text-white/70 uppercase sm:text-[10px] sm:tracking-[0.22em]">{item.label}</p>
+                                            <p
+                                                className="mt-0.5 truncate text-[13px] font-extrabold text-white sm:mt-1 sm:text-lg"
+                                                style={{ fontFamily: "'Poppins', sans-serif" }}
+                                                title={item.handle}
+                                            >
+                                                {item.handle}
+                                            </p>
+                                            <div className="mt-1.5 hidden items-center gap-1.5 text-xs font-bold text-white/85 transition group-hover:text-white sm:mt-3 sm:flex">
+                                                {item.cta}
+                                                <ArrowRight className="size-3.5 transition group-hover:translate-x-1" />
+                                            </div>
+                                        </div>
+                                    </a>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 px-5 py-10 text-center text-sm text-zinc-400 sm:rounded-[1.6rem] sm:px-6 sm:py-12">
+                            Belum ada kanal kontak. Tambahkan dari pengaturan umum.
+                        </div>
+                    )}
+                </div>
             </section>
 
-            {/* ── SERVICE HIGHLIGHTS + MAP ── */}
-            <section className="px-4 pb-16 sm:px-6 sm:pb-24">
+            {/* ── MAP ── */}
+            <section className="px-4 pb-10 sm:px-8 sm:pb-20">
                 <div className="mx-auto max-w-6xl">
-                    <div className="grid gap-6 xl:grid-cols-[1fr_0.85fr]">
-
-                        {/* Map */}
-                        <div className="order-2 xl:order-1 rounded-[2rem] bg-white p-4 sm:p-5">
-                            <div className="flex flex-col gap-3 px-2 pt-2 sm:flex-row sm:items-end sm:justify-between">
-                                <div>
-                                    <span
-                                        className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold tracking-[0.22em] uppercase"
-                                        style={{ borderColor: 'rgba(232,201,0,0.35)', background: YELLOW_SOFT, color: '#78680a' }}
-                                    >
-                                        <MapPin className="h-3 w-3" />
-                                        Lokasi & Navigasi
-                                    </span>
-                                    <h2 className="mt-3 text-2xl font-extrabold text-zinc-950 sm:text-3xl">
-                                        Temukan titik kontak kami
-                                    </h2>
-                                    <p className="mt-2 text-sm leading-6 text-zinc-500">
-                                        Peta ini membantu tamu, partner, dan tim event menemukan lokasi dengan lebih cepat.
-                                    </p>
-                                </div>
+                    <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm sm:rounded-[2rem]">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 px-4 py-3.5 sm:gap-3 sm:px-7 sm:py-5">
+                            <div className="flex items-center gap-2.5 sm:gap-3">
                                 <span
-                                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                                    className="flex size-9 items-center justify-center rounded-xl sm:size-10"
                                     style={{ background: YELLOW }}
                                 >
-                                    <Globe2 className="h-4 w-4 text-zinc-950" />
+                                    <MapPin className="size-4 text-zinc-950" />
                                 </span>
+                                <div>
+                                    <p className="text-[10px] font-bold tracking-[0.18em] text-zinc-400 uppercase sm:tracking-[0.22em]">Lokasi & Navigasi</p>
+                                    <h3
+                                        className="text-sm font-extrabold text-zinc-950 sm:text-lg"
+                                        style={{ fontFamily: "'Poppins', sans-serif" }}
+                                    >
+                                        Temukan titik kontak kami
+                                    </h3>
+                                </div>
                             </div>
-
-                            <div className="mt-5 overflow-hidden rounded-[1.5rem] bg-zinc-100">
-                                {contact.google_maps_embed ? (
-                                    <div
-                                        className="aspect-[16/10] min-h-[320px] [&_iframe]:h-full [&_iframe]:w-full [&_iframe]:border-0"
-                                        dangerouslySetInnerHTML={{ __html: contact.google_maps_embed }}
-                                    />
-                                ) : (
-                                    <div className="flex aspect-[16/10] min-h-[320px] items-center justify-center px-6 text-center text-sm leading-7 text-zinc-400">
-                                        Embed Google Maps belum tersedia. Tambahkan dari pengaturan umum.
-                                    </div>
-                                )}
-                            </div>
+                            <Link
+                                href="/cabang"
+                                className="inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] font-semibold text-zinc-600 transition hover:border-zinc-900 hover:text-zinc-900 sm:gap-1.5 sm:px-3.5 sm:py-1.5 sm:text-xs"
+                            >
+                                Lihat semua cabang
+                                <ArrowUpRight className="size-3 sm:size-3.5" />
+                            </Link>
                         </div>
 
-                        {/* Service highlights */}
-                        <div className="order-1 xl:order-2 grid gap-4 self-start">
-                            {serviceHighlights.map(({ icon: Icon, title, stat, description }) => (
-                                <div
-                                    key={title}
-                                    className="group relative overflow-hidden rounded-[1.8rem] bg-white p-6 transition hover:-translate-y-0.5"
-                                >
-                                    {/* Yellow glow line on left */}
-                                    <div
-                                        className="absolute inset-y-4 left-0 w-[3px] rounded-r-full opacity-0 transition-opacity group-hover:opacity-100"
-                                        style={{ background: YELLOW }}
-                                        aria-hidden
-                                    />
-
-                                    <div className="flex items-start gap-5">
-                                        <div
-                                            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-transform group-hover:scale-105"
-                                            style={{ background: YELLOW_SOFT }}
-                                        >
-                                            <Icon className="h-5 w-5 text-zinc-900" />
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="flex items-center justify-between gap-2">
-                                                <h3 className="text-lg font-extrabold text-zinc-950">{title}</h3>
-                                                <span
-                                                    className="rounded-full border px-2.5 py-1 text-[11px] font-bold text-zinc-900"
-                                                    style={{ borderColor: 'rgba(232,201,0,0.4)', background: YELLOW_SOFT }}
-                                                >
-                                                    {stat}
-                                                </span>
-                                            </div>
-                                            <p className="mt-2 text-sm leading-6 text-zinc-500">{description}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-
-                            {/* CTA card */}
+                        {contact.google_maps_embed ? (
                             <div
-                                className="relative overflow-hidden rounded-[1.8rem] p-6 text-white"
-                                style={{ background: 'linear-gradient(135deg, #18181b 0%, #27272a 100%)' }}
-                            >
-                                <div
-                                    className="pointer-events-none absolute -bottom-6 -right-6 h-32 w-32 rounded-full blur-3xl"
-                                    style={{ background: 'rgba(232,201,0,0.18)' }}
-                                    aria-hidden
-                                />
-                                <div className="relative">
-                                    <p className="text-[10px] font-bold tracking-[0.3em] text-white/40 uppercase">Siap mulai?</p>
-                                    <h3 className="mt-3 text-xl font-extrabold">Langsung hubungi kami sekarang</h3>
-                                    <p className="mt-2 text-sm leading-6 text-white/50">
-                                        Konsultasi gratis, tanpa syarat. Ceritakan event kamu dan kami siap bantu.
-                                    </p>
-                                    {whatsappHref ? (
-                                        <a
-                                            href={whatsappHref}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="mt-5 inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold text-zinc-950 transition hover:brightness-105"
-                                            style={{ background: YELLOW }}
-                                        >
-                                            Chat via WhatsApp
-                                            <ArrowUpRight className="h-4 w-4" />
-                                        </a>
-                                    ) : (
-                                        <a
-                                            href="#contact-channels"
-                                            className="mt-5 inline-flex items-center gap-2 rounded-2xl border border-white/20 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10"
-                                        >
-                                            Lihat semua kanal
-                                            <ArrowUpRight className="h-4 w-4" />
-                                        </a>
-                                    )}
-                                </div>
+                                className="aspect-[4/3] min-h-[240px] sm:aspect-[16/8] sm:min-h-[320px] [&_iframe]:size-full [&_iframe]:border-0"
+                                dangerouslySetInnerHTML={{ __html: contact.google_maps_embed }}
+                            />
+                        ) : (
+                            <div className="flex aspect-[4/3] min-h-[240px] items-center justify-center bg-zinc-50 px-5 text-center text-xs leading-5 text-zinc-400 sm:aspect-[16/8] sm:min-h-[320px] sm:px-6 sm:text-sm sm:leading-6">
+                                Embed Google Maps belum tersedia. Tambahkan dari pengaturan umum.
                             </div>
+                        )}
+                    </div>
+                </div>
+            </section>
+
+            {/* ── FINAL CTA ── */}
+            <section className="px-4 pb-12 sm:px-8 sm:pb-20">
+                <div className="mx-auto max-w-6xl">
+                    <div
+                        className="relative overflow-hidden rounded-2xl px-5 py-8 text-center sm:rounded-[2rem] sm:px-12 sm:py-12 md:py-16"
+                        style={{ background: 'linear-gradient(135deg, #18181b 0%, #27272a 60%, #18181b 100%)' }}
+                    >
+                        <div
+                            className="pointer-events-none absolute -top-24 left-1/2 size-72 -translate-x-1/2 rounded-full blur-3xl"
+                            style={{ background: 'rgba(232,201,0,0.18)' }}
+                        />
+                        <div className="relative">
+                            <span
+                                className="inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-widest text-black uppercase sm:px-3 sm:py-1 sm:text-[11px]"
+                                style={{ background: YELLOW }}
+                            >
+                                Siap mulai?
+                            </span>
+                            <h2
+                                className="mt-3 text-xl font-extrabold leading-tight text-white sm:mt-4 sm:text-4xl md:text-5xl"
+                                style={{ fontFamily: "'Poppins', sans-serif" }}
+                            >
+                                Konsultasi gratis,
+                                <br className="sm:hidden" /> tanpa syarat.
+                            </h2>
+                            <p className="mx-auto mt-2 max-w-xl text-[13px] leading-5 text-white/60 sm:mt-3 sm:text-base sm:leading-6">
+                                Ceritakan jenis acara, tanggal, dan ekspektasinya — kami bantu susun yang paling cocok.
+                            </p>
+                            {whatsappHref ? (
+                                <a
+                                    href={whatsappHref}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="group mt-5 inline-flex items-center gap-2 rounded-full px-5 py-3 text-[13px] font-extrabold text-black transition hover:-translate-y-0.5 hover:brightness-105 active:scale-95 sm:mt-7 sm:px-7 sm:py-4 sm:text-base"
+                                    style={{ background: YELLOW, boxShadow: '0 12px 36px rgba(232,201,0,0.45)' }}
+                                >
+                                    <MessageCircle className="size-4 sm:size-5" />
+                                    Chat WhatsApp Sekarang
+                                    <span className="transition group-hover:translate-x-1">→</span>
+                                </a>
+                            ) : (
+                                <a
+                                    href="#channels"
+                                    className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/20 px-5 py-3 text-[13px] font-bold text-white transition hover:bg-white/10 sm:mt-7 sm:px-7 sm:py-4 sm:text-base"
+                                >
+                                    Lihat semua kanal
+                                    <ArrowUpRight className="size-4 sm:size-5" />
+                                </a>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -676,7 +567,7 @@ export default function ContactPage() {
 }
 
 const ArrowDownIcon = () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="size-4">
         <path d="M12 5v14M6 13l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
 );

@@ -9,6 +9,7 @@
 @endsection
 
 @section('content')
+@include('settings._tabs')
 <div class="row">
     <div class="col-xl-7">
         <div class="card">
@@ -27,7 +28,7 @@
                     $activeProvider = old('payment_provider', $settings['payment_provider'] ?? 'doku');
                 @endphp
 
-                <form action="{{ route('settings.payment.update') }}" method="POST">
+                <form action="{{ route('settings.payment.update') }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
 
@@ -43,6 +44,11 @@
                                 <input class="form-check-input provider-radio" type="radio" name="payment_provider" id="provider_duitku" value="duitku"
                                        {{ $activeProvider === 'duitku' ? 'checked' : '' }}>
                                 <label class="form-check-label text-dark fw-semibold" for="provider_duitku">Duitku</label>
+                            </div>
+                            <div class="form-check form-check-inline border rounded px-3 py-2">
+                                <input class="form-check-input provider-radio" type="radio" name="payment_provider" id="provider_manual" value="manual"
+                                       {{ $activeProvider === 'manual' ? 'checked' : '' }}>
+                                <label class="form-check-label text-dark fw-semibold" for="provider_manual">Manual QRIS</label>
                             </div>
                         </div>
                         @error('payment_provider')
@@ -86,6 +92,39 @@
                                 @error('doku_secret_key')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label for="doku_merchant_id" class="form-label text-dark fw-semibold">
+                                    Merchant ID <span class="text-muted small fw-normal">(opsional)</span>
+                                </label>
+                                <input type="text"
+                                       class="form-control @error('doku_merchant_id') is-invalid @enderror"
+                                       id="doku_merchant_id"
+                                       name="doku_merchant_id"
+                                       value="{{ old('doku_merchant_id', $settings['doku_merchant_id'] ?? '') }}"
+                                       placeholder="contoh: BRN-0221-1770643536857">
+                                @error('doku_merchant_id')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <small class="text-muted">Brand/Merchant ID dari DOKU. Kosong = pakai Client ID.</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="doku_terminal_id" class="form-label text-dark fw-semibold">
+                                    Terminal ID <span class="text-muted small fw-normal">(opsional)</span>
+                                </label>
+                                <input type="text"
+                                       class="form-control @error('doku_terminal_id') is-invalid @enderror"
+                                       id="doku_terminal_id"
+                                       name="doku_terminal_id"
+                                       value="{{ old('doku_terminal_id', $settings['doku_terminal_id'] ?? '') }}"
+                                       placeholder="contoh: BOOTH001">
+                                @error('doku_terminal_id')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <small class="text-muted">Terminal ID QRIS dari DOKU. Kosong = default <code>BOOTH001</code>.</small>
                             </div>
                         </div>
 
@@ -158,6 +197,50 @@
                         </div>
                     </div>
 
+                    <div id="manual-config" class="border rounded p-3 mb-4 provider-section">
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <h6 class="mb-0 text-dark">Konfigurasi Manual QRIS</h6>
+                            <span class="badge bg-warning-subtle text-warning">Tanpa Gateway</span>
+                        </div>
+                        <p class="text-muted small mb-3">
+                            Upload gambar QRIS statis kamu. Pelanggan akan scan gambar ini lalu kasir mengkonfirmasi pembayaran secara manual di layar booth.
+                        </p>
+
+                        @if($manualQrisImageUrl)
+                            <div class="mb-3">
+                                <label class="form-label text-dark fw-semibold">QRIS Saat Ini</label>
+                                <div class="d-flex align-items-start gap-3">
+                                    <img src="{{ $manualQrisImageUrl }}" alt="QRIS" class="rounded border" style="max-width: 180px; max-height: 180px; object-fit: contain;">
+                                    <div class="text-muted small">
+                                        <p class="mb-1">Gambar ini ditampilkan di booth saat metode Manual QRIS aktif.</p>
+                                        <p class="mb-0">Upload gambar baru di bawah untuk menggantinya.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
+                        <div class="mb-3">
+                            <label for="manual_qris_image" class="form-label text-dark fw-semibold">
+                                {{ $manualQrisImageUrl ? 'Ganti Gambar QRIS' : 'Upload Gambar QRIS' }}
+                                @if(!$manualQrisImageUrl) <span class="text-danger">*</span> @endif
+                            </label>
+                            <input type="file"
+                                   class="form-control @error('manual_qris_image') is-invalid @enderror"
+                                   id="manual_qris_image"
+                                   name="manual_qris_image"
+                                   accept="image/jpeg,image/png">
+                            @error('manual_qris_image')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <small class="text-muted">Format JPG/PNG, maksimal 2MB. Gunakan gambar QRIS resmi dari bank/e-wallet kamu.</small>
+                        </div>
+
+                        <div id="qris-preview-wrapper" class="mb-3" style="display:none;">
+                            <label class="form-label text-dark fw-semibold">Preview</label>
+                            <img id="qris-preview" src="" alt="Preview QRIS" class="d-block rounded border" style="max-width: 200px; max-height: 200px; object-fit: contain;">
+                        </div>
+                    </div>
+
                     <button type="submit" class="btn btn-primary waves-effect waves-light">
                         <i class="mdi mdi-content-save-outline me-1"></i> Simpan Perubahan
                     </button>
@@ -174,11 +257,19 @@
                 </h5>
                 <p class="text-muted mb-2">Daftarkan URL ini di dashboard provider yang aktif:</p>
                 <div class="position-relative">
-                    <code class="d-block p-2 bg-light rounded border text-dark small" id="callback-url">{{ route('booth.payment.callback') }}</code>
+                    <code class="d-block p-2 bg-light rounded border text-dark small" id="callback-url">{{ route('api.booth.payment.callback') }}</code>
                     <button class="btn btn-sm btn-outline-secondary position-absolute top-50 end-0 translate-middle-y me-1"
                             onclick="copyCallbackUrl()" title="Salin URL" type="button">
                         <i class="mdi mdi-content-copy"></i>
                     </button>
+                </div>
+                <div class="mt-3 p-2 rounded" style="background:#fff7e0;border:1px dashed #C9A800;">
+                    <p class="small mb-1 fw-semibold text-dark">
+                        <i class="mdi mdi-alert-circle-outline text-warning me-1"></i> DOKU SNAP API
+                    </p>
+                    <p class="small text-muted mb-0">
+                        Halaman <em>QRIS Notify URL</em> di DOKU dashboard hanya untuk Checkout API (legacy). Untuk SNAP API, daftarkan URL ini lewat menu <strong>Integrations</strong> atau hubungi support DOKU.
+                    </p>
                 </div>
             </div>
         </div>
@@ -221,7 +312,19 @@
             const provider = $('input[name="payment_provider"]:checked').val() || 'doku';
             $('#doku-config').toggle(provider === 'doku');
             $('#duitku-config').toggle(provider === 'duitku');
+            $('#manual-config').toggle(provider === 'manual');
         }
+
+        $('#manual_qris_image').on('change', function () {
+            const file = this.files[0];
+            if (!file) { $('#qris-preview-wrapper').hide(); return; }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                $('#qris-preview').attr('src', e.target.result);
+                $('#qris-preview-wrapper').show();
+            };
+            reader.readAsDataURL(file);
+        });
 
         function toggleInputVisibility(buttonSelector, inputSelector) {
             $(buttonSelector).on('click', function () {

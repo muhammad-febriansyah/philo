@@ -17,6 +17,7 @@ type Package = {
     description: string | null;
     photo_count: number;
     print_size: string;
+    print_copies?: number | null;
     price: number;
 };
 
@@ -58,10 +59,42 @@ function formatPrice(price: number) {
     return new Intl.NumberFormat('id-ID').format(price);
 }
 
+function normalizeWhatsappNumber(input: string | null | undefined) {
+    const digits = (input ?? '').replace(/\D/g, '');
+
+    if (!digits) {
+        return null;
+    }
+
+    if (digits.startsWith('0')) {
+        return `62${digits.slice(1)}`;
+    }
+
+    if (digits.startsWith('62')) {
+        return digits;
+    }
+
+    return digits;
+}
+
+function formatPrintSize(size: string) {
+    if (size.toLowerCase() === 'strip') {
+        return 'Photo Strip';
+    }
+
+    return size.toUpperCase();
+}
+
 function getPerks(pkg: Package): string[] {
+    const copies =
+        typeof pkg.print_copies === 'number' && pkg.print_copies > 0
+            ? `${pkg.print_copies} lembar cetak`
+            : '1 lembar cetak';
+
     const perks: string[] = [
         `${pkg.photo_count} foto cetak`,
-        `Ukuran ${pkg.print_size}`,
+        `Ukuran ${formatPrintSize(pkg.print_size)}`,
+        copies,
         'Pembayaran QRIS',
         'Cetak instan di tempat',
         'Template pilihan',
@@ -70,14 +103,19 @@ function getPerks(pkg: Package): string[] {
 }
 
 export default function Harga() {
-    const { packages, faqs, whatsapp_number } = usePage<{
+    const { packages, faqs, whatsapp_number, settings } = usePage<{
         packages: Package[];
         faqs: Faq[];
         whatsapp_number: string | null;
+        settings?: {
+            site_name?: string | null;
+        };
     }>().props;
 
-    const waNumber = (whatsapp_number ?? '').replace(/\D/g, '');
-    const ctaHref = waNumber ? `https://wa.me/${waNumber}` : 'https://wa.me/';
+    const siteName = settings?.site_name?.trim() || 'Philo Photobooth';
+    const waNumber = normalizeWhatsappNumber(whatsapp_number);
+    const ctaHref = waNumber ? `https://wa.me/${waNumber}` : '/kontak';
+    const ctaLabel = waNumber ? 'Hubungi via WhatsApp' : 'Lihat Kontak Kami';
 
     const midIndex = Math.floor(packages.length / 2);
     const faqItems =
@@ -107,7 +145,7 @@ export default function Harga() {
               ];
 
     return (
-        <HomeLayout title="Paket Harga — Philo Photobooth">
+        <HomeLayout title="Paket Harga">
             {/* ── PAGE HEADER ── */}
             <PageHeader
                 title="Paket Harga"
@@ -123,7 +161,31 @@ export default function Harga() {
                 <div className="mx-auto max-w-6xl">
                     {packages.length === 0 ? (
                         <div className="py-24 text-center text-zinc-400">
-                            <div className="mb-3 text-5xl">📷</div>
+                            <div
+                                className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl"
+                                style={{ background: YELLOW_DIM }}
+                            >
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke={YELLOW}
+                                    strokeWidth={1.8}
+                                    className="size-8"
+                                >
+                                    <path
+                                        d="M3 9a2 2 0 0 1 2-2h1.5l1-2h5l1 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    />
+                                    <circle
+                                        cx="12"
+                                        cy="13"
+                                        r="3"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    />
+                                </svg>
+                            </div>
                             <p className="text-lg font-medium">
                                 Paket belum tersedia
                             </p>
@@ -277,7 +339,7 @@ export default function Harga() {
                                                         : {}
                                                 }
                                             >
-                                                Hubungi via WhatsApp
+                                                {ctaLabel}
                                                 <ArrowRight />
                                             </a>
                                         </div>
@@ -291,7 +353,7 @@ export default function Harga() {
                     <p className="mt-10 text-center text-sm text-zinc-400">
                         Harga belum termasuk pajak. Butuh paket khusus?{' '}
                         <a
-                            href="#contact"
+                            href="/kontak"
                             className="font-medium underline underline-offset-2 hover:text-zinc-600"
                         >
                             Hubungi kami
@@ -305,7 +367,6 @@ export default function Harga() {
             <section className="px-6 py-24">
                 <div className="mx-auto max-w-6xl">
                     <div className="grid gap-16 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-
                         {/* Left — sticky label */}
                         <div className="lg:sticky lg:top-32">
                             <span
@@ -315,10 +376,16 @@ export default function Harga() {
                                 FAQ
                             </span>
                             <h2 className="text-3xl font-extrabold text-zinc-900 md:text-4xl">
-                                Pertanyaan<br />yang Sering<br />Ditanyakan
+                                Pertanyaan
+                                <br />
+                                yang Sering
+                                <br />
+                                Ditanyakan
                             </h2>
                             <p className="mt-4 text-sm leading-relaxed text-zinc-500">
-                                Tidak menemukan jawaban yang kamu cari? Hubungi kami langsung via WhatsApp.
+                                Tidak menemukan jawaban yang kamu cari? Hubungi
+                                tim {siteName} langsung untuk bantuan lebih
+                                lanjut.
                             </p>
                             <div
                                 className="mt-6 h-1 w-12 rounded-full"
@@ -328,22 +395,34 @@ export default function Harga() {
 
                         {/* Right — accordion */}
                         <div>
-                            <Accordion type="single" collapsible className="space-y-2">
+                            <Accordion
+                                type="single"
+                                collapsible
+                                className="space-y-2"
+                            >
                                 {faqItems.map((faq, i) => (
                                     <AccordionItem
                                         key={faq.id}
                                         value={`faq-${faq.id}`}
                                         className="group overflow-hidden rounded-2xl border-0 bg-white transition-all duration-200 data-[state=open]:ring-2"
-                                        style={{ ['--tw-ring-color' as string]: 'rgba(232,201,0,0.5)' }}
+                                        style={{
+                                            ['--tw-ring-color' as string]:
+                                                'rgba(232,201,0,0.5)',
+                                        }}
                                     >
-                                        <AccordionTrigger className="px-5 py-4 hover:no-underline hover:bg-zinc-50 [&>svg]:hidden">
+                                        <AccordionTrigger className="px-5 py-4 hover:bg-zinc-50 hover:no-underline [&>svg]:hidden">
                                             <span className="flex w-full items-center justify-between gap-4">
                                                 <span className="flex items-center gap-3 text-left">
                                                     <span
                                                         className="flex size-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-black text-black transition-all group-data-[state=open]:scale-110"
-                                                        style={{ background: YELLOW }}
+                                                        style={{
+                                                            background: YELLOW,
+                                                        }}
                                                     >
-                                                        {String(i + 1).padStart(2, '0')}
+                                                        {String(i + 1).padStart(
+                                                            2,
+                                                            '0',
+                                                        )}
                                                     </span>
                                                     <span className="text-sm font-semibold text-zinc-900">
                                                         {faq.question}
@@ -351,17 +430,34 @@ export default function Harga() {
                                                 </span>
                                                 <span
                                                     className="flex size-6 shrink-0 items-center justify-center rounded-full transition-all group-data-[state=open]:rotate-45"
-                                                    style={{ background: 'rgba(232,201,0,0.15)' }}
+                                                    style={{
+                                                        background:
+                                                            'rgba(232,201,0,0.15)',
+                                                    }}
                                                 >
-                                                    <svg viewBox="0 0 24 24" fill="none" stroke={YELLOW} strokeWidth={2.5} className="size-3.5">
-                                                        <path d="M12 5v14M5 12h14" strokeLinecap="round" />
+                                                    <svg
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke={YELLOW}
+                                                        strokeWidth={2.5}
+                                                        className="size-3.5"
+                                                    >
+                                                        <path
+                                                            d="M12 5v14M5 12h14"
+                                                            strokeLinecap="round"
+                                                        />
                                                     </svg>
                                                 </span>
                                             </span>
                                         </AccordionTrigger>
                                         <AccordionContent className="px-5 pb-5 text-sm leading-relaxed text-zinc-500">
-                                            <div className="pl-10 border-l-2 ml-3.5" style={{ borderColor: YELLOW }}>
-                                                <p className="pl-3">{faq.answer}</p>
+                                            <div
+                                                className="ml-3.5 border-l-2 pl-10"
+                                                style={{ borderColor: YELLOW }}
+                                            >
+                                                <p className="pl-3">
+                                                    {faq.answer}
+                                                </p>
                                             </div>
                                         </AccordionContent>
                                     </AccordionItem>
@@ -415,7 +511,7 @@ export default function Harga() {
                             boxShadow: `0 4px 32px rgba(232,201,0,0.35)`,
                         }}
                     >
-                        Hubungi via WhatsApp
+                        {ctaLabel}
                         <ArrowRight />
                     </a>
                 </div>

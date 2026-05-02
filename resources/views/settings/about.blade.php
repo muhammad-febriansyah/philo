@@ -9,6 +9,7 @@
 @endsection
 
 @section('content')
+@include('settings._tabs')
 <div class="row">
     <div class="col-12">
         <form action="{{ route('settings.about.update') }}" method="POST" enctype="multipart/form-data">

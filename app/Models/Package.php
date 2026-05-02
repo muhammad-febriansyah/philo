@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'description', 'photo_count', 'print_size', 'price', 'is_active'])]
+#[Fillable(['name', 'description', 'photo_count', 'print_size', 'print_copies', 'price', 'is_active'])]
 class Package extends Model
 {
     /** @use HasFactory<PackageFactory> */
@@ -19,6 +19,7 @@ class Package extends Model
     {
         return [
             'photo_count' => 'integer',
+            'print_copies' => 'integer',
             'price' => 'integer',
             'is_active' => 'boolean',
         ];

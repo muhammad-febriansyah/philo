@@ -32,7 +32,22 @@
       "WebFetch(domain:developers.doku.com)",
       "Bash(openssl genrsa *)",
       "Bash(openssl rsa *)",
-      "WebFetch(domain:jokul.doku.com)"
+      "WebFetch(domain:jokul.doku.com)",
+      "Bash(curl *)",
+      "Bash(npx tsc *)",
+      "Bash(php -r \"echo 'upload_max_filesize: '.ini_get\\('upload_max_filesize'\\).PHP_EOL.'post_max_size: '.ini_get\\('post_max_size'\\).PHP_EOL.'memory_limit: '.ini_get\\('memory_limit'\\).PHP_EOL;\")",
+      "Bash(git stash *)",
+      "WebFetch(domain:www.gabooth.id)",
+      "Bash(git checkout *)",
+      "Bash(awk 'NR>=61 && NR<=490 {next} {print}' /Applications/laravel/philo/resources/views/dashboard.blade.php)",
+      "Read(//tmp/**)",
+      "Bash(php -l app/Http/Controllers/Admin/DashboardController.php)",
+      "Bash(php -r 'require \"vendor/autoload.php\"; $app = require \"bootstrap/app.php\"; $kernel = $app->make\\(Illuminate\\\\Contracts\\\\Console\\\\Kernel::class\\); $kernel->bootstrap\\(\\); $contents = file_get_contents\\(\"resources/views/dashboard.blade.php\"\\); $compiled = \\(new Illuminate\\\\View\\\\Compilers\\\\BladeCompiler\\($app[\"files\"], sys_get_temp_dir\\(\\)\\)\\)->compileString\\($contents\\); echo strlen\\($compiled\\) > 0 ? \"Blade compiled OK \\(\".strlen\\($compiled\\).\" bytes\\)\\\\n\" : \"FAIL\\\\n\";')",
+      "Bash(php -l app/Http/Controllers/Admin/PackageController.php)",
+      "Bash(php *)",
+      "Bash(grep *)",
+      "Bash(xargs cat *)",
+      "WebFetch(domain:mailketing.co.id)"
     ]
   },
   "enableAllProjectMcpServers": true,

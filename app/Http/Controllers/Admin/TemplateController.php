@@ -8,15 +8,54 @@ use App\Http\Requests\UpdateTemplateRequest;
 use App\Models\Template;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 use Yajra\DataTables\Facades\DataTables;
 
 class TemplateController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        return view('templates.index');
+        $base = Template::query()
+            ->when($request->filled('q'), function ($q) use ($request) {
+                $term = '%'.trim($request->string('q')).'%';
+                $q->where('name', 'like', $term);
+            })
+            ->when($request->filled('status'), function ($q) use ($request) {
+                $q->where('is_active', $request->string('status')->toString() === 'active');
+            })
+            ->when($request->filled('size'), function ($q) use ($request) {
+                $q->where('print_size', $request->string('size')->toString());
+            });
+
+        $templates = (clone $base)
+            ->orderByDesc('is_active')
+            ->orderBy('name')
+            ->paginate(12)
+            ->withQueryString();
+
+        $counts = [
+            'all' => Template::count(),
+            'active' => Template::where('is_active', true)->count(),
+            'inactive' => Template::where('is_active', false)->count(),
+            'sizes' => Template::selectRaw('print_size, COUNT(*) as total')
+                ->groupBy('print_size')
+                ->pluck('total', 'print_size')
+                ->all(),
+        ];
+
+        return view('templates.index', [
+            'templates' => $templates,
+            'counts' => $counts,
+            'filters' => [
+                'q' => (string) $request->string('q'),
+                'status' => (string) $request->string('status'),
+                'size' => (string) $request->string('size'),
+            ],
+        ]);
     }
 
     public function data(): JsonResponse
@@ -46,7 +85,7 @@ class TemplateController extends Controller
                     <a href="'.route('templates.show', $template).'" class="btn btn-sm btn-info waves-effect me-1">
                         <i class="mdi mdi-eye me-1"></i> Detail
                     </a>
-                    <a href="'.route('templates.edit', $template).'" class="btn btn-sm btn-warning waves-effect me-1">
+                    <a href="'.route('templates.builder.edit', $template).'" class="btn btn-sm btn-warning waves-effect me-1">
                         <i class="mdi mdi-pencil me-1"></i> Edit
                     </a>
                     <button type="button" class="btn btn-sm btn-danger waves-effect btn-delete"
@@ -62,6 +101,43 @@ class TemplateController extends Controller
     public function create(): View
     {
         return view('templates.create');
+    }
+
+    public function builder(): InertiaResponse
+    {
+        return Inertia::render('admin/templates/builder', [
+            'template' => null,
+            'printSizes' => $this->printSizeOptions(),
+        ]);
+    }
+
+    public function builderEdit(Template $template): InertiaResponse
+    {
+        return Inertia::render('admin/templates/builder', [
+            'template' => [
+                'id' => $template->id,
+                'name' => $template->name,
+                'print_size' => $template->print_size,
+                'photo_slots' => $template->photo_slots,
+                'slot_positions' => $template->slot_positions,
+                'is_active' => $template->is_active,
+                'frame_url' => $template->frame_path ? Storage::url($template->frame_path) : null,
+            ],
+            'printSizes' => $this->printSizeOptions(),
+        ]);
+    }
+
+    /**
+     * @return array<int, array{value: string, label: string, ratio: float, dimensions: string}>
+     */
+    private function printSizeOptions(): array
+    {
+        return [
+            ['value' => 'strip', 'label' => 'Strip', 'ratio' => 1 / 3, 'dimensions' => '2" × 6"'],
+            ['value' => '4R', 'label' => '4R', 'ratio' => 4 / 6, 'dimensions' => '4" × 6"'],
+            ['value' => 'A4', 'label' => 'A4', 'ratio' => 210 / 297, 'dimensions' => '210 × 297mm'],
+            ['value' => 'A3', 'label' => 'A3', 'ratio' => 297 / 420, 'dimensions' => '297 × 420mm'],
+        ];
     }
 
     public function store(StoreTemplateRequest $request): RedirectResponse
@@ -89,7 +165,16 @@ class TemplateController extends Controller
         $template->frame_url = $template->frame_path ? Storage::url($template->frame_path) : null;
         $template->thumbnail_url = $template->thumbnail_path ? Storage::url($template->thumbnail_path) : null;
 
-        return view('templates.show', compact('template'));
+        $template->load(['packages:id,name,price,is_active,print_copies']);
+
+        $stats = [
+            'sessions_total' => $template->photoSessions()->count(),
+            'sessions_completed' => $template->photoSessions()->where('status', 'completed')->count(),
+            'packages_count' => $template->packages->count(),
+            'last_used_at' => $template->photoSessions()->latest('created_at')->value('created_at'),
+        ];
+
+        return view('templates.show', compact('template', 'stats'));
     }
 
     public function edit(Template $template): View

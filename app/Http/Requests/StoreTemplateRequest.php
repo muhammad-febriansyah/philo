@@ -18,7 +18,7 @@ class StoreTemplateRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'print_size' => ['required', 'string', 'max:50'],
             'photo_slots' => ['required', 'integer', 'min:1', 'max:20'],
-            'thumbnail' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+            'thumbnail' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:30720', 'dimensions:min_width=800,min_height=800'],
             'slot_positions' => ['nullable', 'json'],
             'is_active' => ['sometimes', 'boolean'],
         ];
@@ -29,9 +29,10 @@ class StoreTemplateRequest extends FormRequest
         return [
             'thumbnail.required' => 'Gambar frame wajib diunggah.',
             'thumbnail.file' => 'File gambar frame tidak valid.',
-            'thumbnail.uploaded' => 'Gambar frame gagal diunggah. Pastikan ukuran file tidak melebihi 10 MB.',
+            'thumbnail.uploaded' => 'Gambar frame gagal diunggah. Pastikan ukuran file tidak melebihi 30 MB.',
             'thumbnail.mimes' => 'Gambar frame harus berformat JPG, PNG, atau WebP.',
-            'thumbnail.max' => 'Ukuran gambar frame tidak boleh melebihi 10 MB.',
+            'thumbnail.max' => 'Ukuran gambar frame tidak boleh melebihi 30 MB.',
+            'thumbnail.dimensions' => 'Resolusi gambar frame minimal 800×800 px (disarankan ≥ 1200 px untuk cetak berkualitas).',
         ];
     }
 
