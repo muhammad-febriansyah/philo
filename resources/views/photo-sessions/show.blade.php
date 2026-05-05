@@ -358,11 +358,6 @@
                 @endif
             </div>
             <div class="d-flex flex-wrap gap-2">
-                @if($branch)
-                    <a href="{{ url('booth/'.$branch->code) }}" target="_blank" class="psd-action-btn">
-                        <i class="mdi mdi-monitor"></i> Buka Booth
-                    </a>
-                @endif
                 @if($finalImageUrl)
                     <a href="{{ route('photo-sessions.download-all', $session) }}" class="psd-action-btn">
                         <i class="mdi mdi-folder-zip-outline"></i> Download ZIP
