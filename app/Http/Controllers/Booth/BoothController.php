@@ -299,8 +299,20 @@ class BoothController extends Controller
                 ? $this->generateQrSvgDataUri($result['qr_string'])
                 : null;
             $expiredAt = $result['expired_at'];
-        } catch (\RuntimeException $e) {
-            Log::warning(strtoupper($provider).' fallback to simulation', ['error' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            Log::warning(strtoupper($provider).' transaction failed', ['error' => $e->getMessage()]);
+
+            // In dev/staging keep the simulation fallback so we can still test
+            // the rest of the flow without a working gateway. In production we
+            // refuse — a fake QR that can't be scanned is worse than an error.
+            if (! app()->isLocal() && ! app()->environment('staging')) {
+                $transaction->delete();
+
+                return response()->json([
+                    'error' => 'Gagal menghubungi gateway pembayaran. Silakan coba lagi atau hubungi petugas.',
+                ], 502);
+            }
+
             $transaction->update(['qris_string' => $orderId]);
             $qrUrl = $this->generateQrSvgDataUri($orderId);
             $expiredAt = now()->addMinutes(15)->toISOString();
