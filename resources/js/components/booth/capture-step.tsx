@@ -177,6 +177,7 @@ export default function CaptureStep({
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
+    const filterThumbRefs = useRef<Record<string, HTMLCanvasElement | null>>({});
 
     const [captureState, setCaptureState] = useState<CaptureState>('ready');
     const [countdown, setCountdown] = useState(countdownSeconds);
@@ -186,6 +187,7 @@ export default function CaptureStep({
     const [reviewSeconds, setReviewSeconds] = useState(REVIEW_SECONDS);
     const [selectedFilter, setSelectedFilter] = useState<FilterKey>('none');
     const [filtersVisible, setFiltersVisible] = useState(true);
+    const [videoReady, setVideoReady] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const cameraWrapRef = useRef<HTMLDivElement>(null);
@@ -218,8 +220,14 @@ export default function CaptureStep({
                     return;
                 }
                 streamRef.current = stream;
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
+                const video = videoRef.current;
+                if (video) {
+                    video.srcObject = stream;
+                    const onReady = () => {
+                        if (video.videoWidth > 0) setVideoReady(true);
+                    };
+                    video.addEventListener('loadeddata', onReady);
+                    video.addEventListener('playing', onReady);
                 }
             })
             .catch(() => setError('Kamera tidak dapat diakses. Pastikan izin kamera diberikan.'));
@@ -229,6 +237,54 @@ export default function CaptureStep({
             streamRef.current?.getTracks().forEach((track) => track.stop());
         };
     }, []);
+
+    // Live filter thumbnail preview — render the user's face onto each
+    // filter chip so they can see the effect before picking, like a
+    // professional photobooth app.
+    useEffect(() => {
+        if (!videoReady) return;
+        if (captureState !== 'ready') return;
+        if (!filtersVisible) return;
+
+        let rafId = 0;
+        let lastDraw = 0;
+        const intervalMs = 120; // ~8fps is enough for thumbnails
+
+        const draw = (now: number) => {
+            rafId = requestAnimationFrame(draw);
+            if (now - lastDraw < intervalMs) return;
+            lastDraw = now;
+
+            const video = videoRef.current;
+            if (!video || video.readyState < 2 || video.videoWidth === 0) return;
+
+            const sw = video.videoWidth;
+            const sh = video.videoHeight;
+            const size = Math.min(sw, sh);
+            const sx = (sw - size) / 2;
+            const sy = (sh - size) / 2;
+
+            for (const key of Object.keys(FILTERS) as FilterKey[]) {
+                const canvas = filterThumbRefs.current[key];
+                if (!canvas) continue;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) continue;
+
+                const dw = canvas.width;
+                const dh = canvas.height;
+
+                ctx.save();
+                ctx.filter = FILTERS[key].css;
+                ctx.translate(dw, 0);
+                ctx.scale(-1, 1);
+                ctx.drawImage(video, sx, sy, size, size, 0, 0, dw, dh);
+                ctx.restore();
+            }
+        };
+
+        rafId = requestAnimationFrame(draw);
+        return () => cancelAnimationFrame(rafId);
+    }, [videoReady, captureState, filtersVisible]);
 
 
     useEffect(() => {
@@ -640,7 +696,20 @@ export default function CaptureStep({
                                                         : '0 0 0 1.5px rgba(255,255,255,0.25)',
                                                     transform: isSelected ? 'scale(1.12)' : 'scale(1)',
                                                 }}
-                                            />
+                                            >
+                                                <canvas
+                                                    ref={(el) => {
+                                                        filterThumbRefs.current[key] = el;
+                                                    }}
+                                                    width={96}
+                                                    height={96}
+                                                    className="h-full w-full"
+                                                    style={{
+                                                        opacity: videoReady ? 1 : 0,
+                                                        transition: 'opacity 0.2s',
+                                                    }}
+                                                />
+                                            </div>
                                             <p
                                                 className="text-[9px] font-bold drop-shadow-sm transition-colors duration-150"
                                                 style={{

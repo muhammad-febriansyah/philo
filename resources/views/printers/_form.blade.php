@@ -28,8 +28,10 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold small text-dark">Cabang</label>
-                            <select name="branch_id" class="form-select" required {{ auth()->user()->isCabang() ? 'disabled' : '' }}>
-                                <option value="">-- Pilih cabang --</option>
+                            <select name="branch_id" class="form-select" {{ auth()->user()->isCabang() ? 'disabled' : '' }}>
+                                @unless (auth()->user()->isCabang())
+                                    <option value="" @selected($currentBranch === '' || $currentBranch === null)>— Global / Tanpa Cabang —</option>
+                                @endunless
                                 @foreach ($branches as $branch)
                                     <option value="{{ $branch->id }}" @selected((string) $currentBranch === (string) $branch->id)>
                                         {{ $branch->name }} @if ($branch->code) ({{ $branch->code }}) @endif
@@ -39,6 +41,8 @@
                             @if (auth()->user()->isCabang())
                                 <input type="hidden" name="branch_id" value="{{ auth()->user()->branch_id }}">
                                 <small class="text-muted">Otomatis cabang Anda.</small>
+                            @else
+                                <small class="text-muted">Pilih <strong>Global</strong> kalau dipakai admin pusat / fallback semua cabang.</small>
                             @endif
                             @error('branch_id') <small class="text-danger">{{ $message }}</small> @enderror
                         </div>

@@ -28,8 +28,9 @@
                 <form method="GET" class="d-flex gap-2 align-items-center">
                     <select name="branch" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="">Semua Cabang</option>
+                        <option value="global" @selected($branchFilter === 'global')>— Global / Pusat —</option>
                         @foreach ($branches as $branch)
-                            <option value="{{ $branch->id }}" @selected($branchFilter == $branch->id)>{{ $branch->name }}</option>
+                            <option value="{{ $branch->id }}" @selected($branchFilter === (string) $branch->id)>{{ $branch->name }}</option>
                         @endforeach
                     </select>
                 </form>
@@ -59,10 +60,16 @@
                 @php $branch = $group->first()->branch; @endphp
                 <div class="mb-4">
                     <h6 class="fw-semibold mb-2 d-flex align-items-center gap-2">
-                        <i class="fas fa-store text-warning"></i>
-                        {{ $branch?->name ?? 'Cabang #'.$branchId }}
-                        @if ($branch?->code)
-                            <span class="badge bg-light text-dark small">{{ $branch->code }}</span>
+                        @if ($branch)
+                            <i class="fas fa-store text-warning"></i>
+                            {{ $branch->name }}
+                            @if ($branch->code)
+                                <span class="badge bg-light text-dark small">{{ $branch->code }}</span>
+                            @endif
+                        @else
+                            <i class="fas fa-globe text-info"></i>
+                            Global / Pusat
+                            <span class="badge bg-info text-white small">tanpa cabang</span>
                         @endif
                     </h6>
 
@@ -108,7 +115,7 @@
                                                 <i class="fas fa-pen"></i>
                                             </a>
                                             <button type="button" class="btn btn-sm btn-danger btn-delete"
-                                                    data-name="{{ $printer->purposeLabel() }} - {{ $branch?->name }}"
+                                                    data-name="{{ $printer->purposeLabel() }} - {{ $branch?->name ?? 'Global' }}"
                                                     data-url="{{ route('printers.destroy', $printer) }}" title="Hapus">
                                                 <i class="fas fa-trash-alt"></i>
                                             </button>

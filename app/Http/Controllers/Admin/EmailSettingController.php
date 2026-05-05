@@ -19,6 +19,7 @@ class EmailSettingController extends Controller
         'mailketing_from_email',
         'email_notify_paid',
         'email_notify_session_complete',
+        'email_logo_url',
     ];
 
     public function edit(): View
@@ -37,6 +38,7 @@ class EmailSettingController extends Controller
             'mailketing_from_email' => ['nullable', 'email', 'max:150'],
             'email_notify_paid' => ['nullable', 'boolean'],
             'email_notify_session_complete' => ['nullable', 'boolean'],
+            'email_logo_url' => ['nullable', 'url', 'max:500'],
         ]);
 
         if ($request->boolean('email_notifications_enabled')) {
@@ -53,6 +55,7 @@ class EmailSettingController extends Controller
         Setting::set('mailketing_from_email', $validated['mailketing_from_email'] ?? null);
         Setting::set('email_notify_paid', $request->has('email_notify_paid') ? '1' : '0');
         Setting::set('email_notify_session_complete', $request->has('email_notify_session_complete') ? '1' : '0');
+        Setting::set('email_logo_url', $validated['email_logo_url'] ?? null);
 
         return redirect()->route('settings.email')->with('success', 'Pengaturan email berhasil disimpan.');
     }

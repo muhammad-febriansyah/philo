@@ -1,5 +1,5 @@
 import { Head } from '@inertiajs/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import CaptureStep from '@/components/booth/capture-step';
 import CompleteStep from '@/components/booth/complete-step';
 import FrameStep from '@/components/booth/frame-step';
@@ -153,6 +153,73 @@ export default function BoothShow({
     const [capturedPhotos, setCapturedPhotos] = useState<CapturedPhoto[]>([]);
     const [editedImage, setEditedImage] = useState<string | null>(null);
     const [duitkuPaymentMethod] = useState(settings.duitku_payment_method || 'GQ');
+    const gatewayPopupRef = useRef<Window | null>(null);
+
+    const closeGatewayPopup = useCallback(() => {
+        if (gatewayPopupRef.current && !gatewayPopupRef.current.closed) {
+            gatewayPopupRef.current.close();
+        }
+        gatewayPopupRef.current = null;
+    }, []);
+
+    // Open a chromeless popup. Browsers only honor `popup=yes` features when
+    // window.open is called *synchronously* inside a user-gesture handler —
+    // otherwise it falls back to a regular tab. So we open BEFORE awaiting the
+    // API and redirect later via `setGatewayPopupUrl`.
+    const openGatewayPopup = useCallback((url?: string): Window | null => {
+        const w = 480;
+        const h = 720;
+        const left = window.screenX + Math.max(0, (window.outerWidth - w) / 2);
+        const top = window.screenY + Math.max(0, (window.outerHeight - h) / 2);
+        const features = [
+            'popup=yes',
+            'noopener=no',
+            'noreferrer=no',
+            'menubar=no',
+            'toolbar=no',
+            'location=no',
+            'status=no',
+            'scrollbars=yes',
+            'resizable=yes',
+            `width=${w}`,
+            `height=${h}`,
+            `left=${left}`,
+            `top=${top}`,
+        ].join(',');
+
+        if (gatewayPopupRef.current && !gatewayPopupRef.current.closed) {
+            if (url) {
+                try {
+                    gatewayPopupRef.current.location.href = url;
+                } catch {
+                    /* cross-origin — Duitku page already navigated; ignore */
+                }
+            }
+            try {
+                gatewayPopupRef.current.focus();
+            } catch {
+                /* ignore */
+            }
+            return gatewayPopupRef.current;
+        }
+
+        const popup = window.open(url ?? 'about:blank', 'philo_duitku_payment', features);
+        if (!popup) {
+            return null;
+        }
+        gatewayPopupRef.current = popup;
+        try {
+            popup.focus();
+        } catch {
+            /* ignore */
+        }
+        return popup;
+    }, []);
+
+
+    useEffect(() => {
+        return () => closeGatewayPopup();
+    }, [closeGatewayPopup]);
 
     const siteName = settings.site_name ?? 'Philo Photobooth';
     const logoUrl = settings.logo_path ? `/storage/${settings.logo_path}` : null;
@@ -161,6 +228,7 @@ export default function BoothShow({
 
     const reset = useCallback(() => {
         sessionStorage.removeItem(GATEWAY_RESUME_KEY);
+        closeGatewayPopup();
         setStep('landing');
         setLoadingAction(false);
         setExtraPrints(0);
@@ -169,7 +237,16 @@ export default function BoothShow({
         setSessionId(null);
         setCapturedPhotos([]);
         setEditedImage(null);
-    }, []);
+    }, [closeGatewayPopup]);
+
+    const handleReopenGateway = useCallback(
+        (url?: string) => {
+            const target = url ?? transaction?.payment_url ?? null;
+            if (!target) return;
+            openGatewayPopup(target);
+        },
+        [openGatewayPopup, transaction],
+    );
 
     // Resume after Duitku redirect
     useEffect(() => {
@@ -239,21 +316,10 @@ export default function BoothShow({
                     },
                 );
 
-                if (data.payment_provider === 'duitku' && data.payment_url) {
-                    const resumeState: GatewayResumeState = {
-                        transaction: data,
-                        extraPrints: extras,
-                        branch_code: branch.code,
-                        created_at: Date.now(),
-                    };
-                    sessionStorage.setItem(
-                        GATEWAY_RESUME_KEY,
-                        JSON.stringify(resumeState),
-                    );
-                    window.location.href = data.payment_url;
-                    return;
-                }
-
+                // Show the QR (rendered from Duitku's qrString) on this page.
+                // The Duitku gateway page is opt-in via the popup button —
+                // browsers refuse chromeless popups outside of direct user
+                // gestures, so auto-opening always degrades to a tab.
                 setTransaction(data);
                 setStep('payment');
             } catch {
@@ -262,7 +328,7 @@ export default function BoothShow({
                 setLoadingAction(false);
             }
         },
-        [branch.code, branch.id, duitkuPaymentMethod, settings.payment_provider],
+        [branch.id, duitkuPaymentMethod, settings.payment_provider],
     );
 
     const handleVoucherApplied = useCallback((newTransaction: TransactionData) => {
@@ -271,6 +337,8 @@ export default function BoothShow({
 
     const handlePaymentPaid = useCallback(async () => {
         if (!transaction) return;
+
+        closeGatewayPopup();
 
         try {
             const data = await api.post<{ session_id: number; photo_count: number }>(
@@ -285,7 +353,7 @@ export default function BoothShow({
         } catch {
             reset();
         }
-    }, [reset, transaction]);
+    }, [closeGatewayPopup, reset, transaction]);
 
     const handleFrameSelect = useCallback(
         async (template: Template) => {
@@ -393,6 +461,12 @@ export default function BoothShow({
                             onVoucherApplied={handleVoucherApplied}
                             onPaid={handlePaymentPaid}
                             onExpired={reset}
+                            onReopenGateway={
+                                transaction.payment_provider === 'duitku' &&
+                                transaction.payment_url
+                                    ? handleReopenGateway
+                                    : undefined
+                            }
                         />
                     )}
 

@@ -293,14 +293,16 @@ class BoothController extends Controller
                 'expired_at' => $result['expired_at'],
             ]);
 
+            // Render QR locally from the Duitku-issued payload — no third-party
+            // image service. The QR content itself still comes from Duitku.
             $qrUrl = ! empty($result['qr_string'])
-                ? 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&data='.urlencode($result['qr_string'])
+                ? $this->generateQrSvgDataUri($result['qr_string'])
                 : null;
             $expiredAt = $result['expired_at'];
         } catch (\RuntimeException $e) {
             Log::warning(strtoupper($provider).' fallback to simulation', ['error' => $e->getMessage()]);
             $transaction->update(['qris_string' => $orderId]);
-            $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&data='.urlencode($orderId);
+            $qrUrl = $this->generateQrSvgDataUri($orderId);
             $expiredAt = now()->addMinutes(15)->toISOString();
         }
 
@@ -615,12 +617,71 @@ class BoothController extends Controller
         ]);
     }
 
+    public function sendSessionEmail(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'session_id' => ['required', 'exists:photo_sessions,id'],
+            'email' => ['required', 'email:rfc'],
+        ]);
+
+        $session = PhotoSession::findOrFail($validated['session_id']);
+
+        if (! $session->final_image_path) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Foto belum siap. Coba lagi sebentar.',
+            ], 422);
+        }
+
+        $mail = app(MailketingService::class);
+
+        if (! $mail->isEnabled()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Layanan email belum dikonfigurasi.',
+            ], 503);
+        }
+
+        $session->update(['customer_email' => $validated['email']]);
+
+        $finalImageUrl = url(Storage::url($session->final_image_path));
+
+        $sent = $this->deliverSessionCompleteEmail($session, $finalImageUrl, $validated['email']);
+
+        if (! $sent) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Email gagal dikirim. Silakan coba lagi.',
+            ], 502);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Foto berhasil dikirim ke '.$validated['email'].'.',
+        ]);
+    }
+
     private function dispatchSessionCompleteEmail(PhotoSession $session, string $finalImageUrl): void
     {
         $mail = app(MailketingService::class);
 
         if (! $mail->isEnabled() || ! $mail->notifySessionCompleteEnabled()) {
             return;
+        }
+
+        if (! $session->customer_email) {
+            return;
+        }
+
+        $this->deliverSessionCompleteEmail($session, $finalImageUrl, $session->customer_email);
+    }
+
+    private function deliverSessionCompleteEmail(PhotoSession $session, string $finalImageUrl, string $recipient): bool
+    {
+        $mail = app(MailketingService::class);
+
+        if (! $mail->isEnabled()) {
+            return false;
         }
 
         $siteName = (string) Setting::get('site_name', 'Philo Photobooth');
@@ -636,11 +697,17 @@ class BoothController extends Controller
             'sessionId' => $session->id,
         ])->render();
 
-        $mail->send(
-            to: $session->customer_email,
+        // Mailketing fetches attachments by URL — pass the public storage URL.
+        $attachments = [$finalImageUrl];
+
+        $response = $mail->send(
+            to: $recipient,
             subject: $subject,
             content: $html,
+            attachments: $attachments,
         );
+
+        return ($response['success'] ?? false) === true;
     }
 
     private function generateQrSvgDataUri(string $content): string

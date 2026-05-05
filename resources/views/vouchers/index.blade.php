@@ -12,22 +12,28 @@
 @php
     $authUser = auth()->user();
     $authBranch = $authUser?->branch;
-    $voucherPrinter = $authBranch
-        ? app(\App\Services\ThermalPrinterService::class)->printerFor($authBranch, \App\Models\Printer::PURPOSE_VOUCHER)
-        : null;
+    $voucherPrinter = app(\App\Services\ThermalPrinterService::class)
+        ->printerFor($authBranch, \App\Models\Printer::PURPOSE_VOUCHER);
     $printerReady = $voucherPrinter && $voucherPrinter->is_active;
+    $printerScope = $voucherPrinter
+        ? ($voucherPrinter->branch?->name ?? 'Global')
+        : null;
 @endphp
 
 <div class="alert d-flex align-items-center gap-2 mb-3 {{ $printerReady ? 'alert-success' : 'alert-warning' }}" role="alert">
     <i class="fas fa-print"></i>
     <div class="flex-grow-1 small">
         @if ($printerReady)
-            <strong>Printer voucher cabang {{ $authBranch->name }} aktif.</strong>
+            <strong>Printer voucher aktif.</strong>
+            <span class="badge bg-light text-dark ms-1">{{ $printerScope }}</span>
             {{ strtoupper($voucherPrinter->connector) }} · <code>{{ $voucherPrinter->device }}</code>
-        @elseif (! $authBranch)
-            <strong>Akun Anda belum terhubung ke cabang.</strong> Hubungkan dulu akun ke cabang sebelum print.
         @else
-            <strong>Cabang {{ $authBranch->name }} belum punya printer voucher.</strong> Tambahkan dulu di menu Printer.
+            <strong>Belum ada printer voucher.</strong>
+            @if ($authBranch)
+                Tambahkan printer untuk cabang {{ $authBranch->name }} (atau Global) di menu Printer.
+            @else
+                Tambahkan printer dengan slot <strong>Global</strong> di menu Printer agar admin pusat bisa print.
+            @endif
         @endif
     </div>
     <a href="{{ route('printers.index') }}" class="btn btn-sm btn-outline-dark">

@@ -17,21 +17,37 @@ use Throwable;
 
 class ThermalPrinterService
 {
-    public function printerFor(Branch $branch, string $purpose): ?Printer
+    /**
+     * Resolve printer to use for a given purpose.
+     * Tries branch printer first; falls back to global (branch_id NULL) if missing.
+     */
+    public function printerFor(?Branch $branch, string $purpose): ?Printer
     {
+        if ($branch) {
+            $branchPrinter = Printer::query()
+                ->where('branch_id', $branch->id)
+                ->where('purpose', $purpose)
+                ->where('is_active', true)
+                ->first();
+            if ($branchPrinter) {
+                return $branchPrinter;
+            }
+        }
+
         return Printer::query()
-            ->where('branch_id', $branch->id)
+            ->whereNull('branch_id')
             ->where('purpose', $purpose)
             ->where('is_active', true)
             ->first();
     }
 
-    public function requirePrinter(Branch $branch, string $purpose): Printer
+    public function requirePrinter(?Branch $branch, string $purpose): Printer
     {
         $printer = $this->printerFor($branch, $purpose);
         if (! $printer) {
             $label = Printer::purposeLabels()[$purpose] ?? $purpose;
-            throw new RuntimeException("Printer '{$label}' belum diatur untuk cabang {$branch->name}.");
+            $where = $branch ? "untuk cabang {$branch->name} (atau global)" : 'global';
+            throw new RuntimeException("Printer '{$label}' belum diatur {$where}.");
         }
 
         return $printer;
@@ -40,7 +56,7 @@ class ThermalPrinterService
     /**
      * @param  array<string, mixed>  $payload
      */
-    public function printVoucher(array $payload, Branch $branch): void
+    public function printVoucher(array $payload, ?Branch $branch = null): void
     {
         $printer = $this->requirePrinter($branch, Printer::PURPOSE_VOUCHER);
         $this->withPrinter($printer, function (EscPrinter $esc) use ($payload) {
@@ -51,7 +67,7 @@ class ThermalPrinterService
     /**
      * @param  array<int, array<string, mixed>>  $payloads
      */
-    public function printVouchers(array $payloads, Branch $branch): int
+    public function printVouchers(array $payloads, ?Branch $branch = null): int
     {
         if ($payloads === []) {
             return 0;
@@ -82,7 +98,7 @@ class ThermalPrinterService
             $esc->setEmphasis(false);
             $esc->text(str_repeat('=', 32)."\n");
             $esc->setJustification(EscPrinter::JUSTIFY_LEFT);
-            $esc->text('Cabang  : '.$printer->branch?->name."\n");
+            $esc->text('Cabang  : '.($printer->branch?->name ?? 'GLOBAL')."\n");
             $esc->text('Slot    : '.$printer->purposeLabel()."\n");
             $esc->text('Device  : '.$printer->device."\n");
             $esc->text('Tanggal : '.now()->format('d/m/Y H:i:s')."\n");

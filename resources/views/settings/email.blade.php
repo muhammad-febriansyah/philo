@@ -107,6 +107,28 @@
                         </div>
                     </div>
 
+                    {{-- Logo override --}}
+                    <h6 class="text-uppercase text-muted fw-semibold small mb-2 mt-3" style="letter-spacing:0.05em;">Logo Email</h6>
+                    <div class="mb-3">
+                        <label for="email_logo_url" class="form-label text-dark fw-semibold">
+                            URL Logo (override)
+                        </label>
+                        <input type="url"
+                               class="form-control @error('email_logo_url') is-invalid @enderror"
+                               id="email_logo_url"
+                               name="email_logo_url"
+                               value="{{ old('email_logo_url', $settings['email_logo_url'] ?? '') }}"
+                               placeholder="https://cdn.example.com/logo.png">
+                        @error('email_logo_url')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                        <small class="text-muted d-block">
+                            Default-nya pakai logo dari <strong>Pengaturan Umum</strong> (DB).
+                            Jika sistem ini berjalan di alamat lokal (mis. <code>127.0.0.1</code>), email client tidak bisa
+                            mengambil logo lokal — isi field ini dengan URL publik (mis. CDN, S3, image host) agar logo tampil.
+                        </small>
+                    </div>
+
                     {{-- Triggers --}}
                     <h6 class="text-uppercase text-muted fw-semibold small mb-2 mt-3" style="letter-spacing:0.05em;">Event Notifikasi</h6>
 

@@ -155,6 +155,7 @@ Route::prefix('booth')->name('booth.')->group(function () {
     Route::post('photo/capture', [BoothController::class, 'capturePhoto'])->name('photo.capture');
     Route::post('session/template', [BoothController::class, 'chooseTemplate'])->name('session.template');
     Route::post('session/complete', [BoothController::class, 'completeSession'])->name('session.complete');
+    Route::post('session/email', [BoothController::class, 'sendSessionEmail'])->name('session.email');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -173,8 +174,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('transactions-data', [TransactionController::class, 'data'])->name('transactions.data');
     Route::get('transactions/export/excel', [TransactionController::class, 'exportExcel'])->name('transactions.export.excel');
     Route::get('transactions/export/pdf', [TransactionController::class, 'exportPdf'])->name('transactions.export.pdf');
-    Route::resource('photo-sessions', PhotoSessionController::class)->only(['index', 'show']);
+    Route::resource('photo-sessions', PhotoSessionController::class)->only(['index', 'show', 'destroy']);
     Route::get('photo-sessions-data', [PhotoSessionController::class, 'data'])->name('photo-sessions.data');
+    Route::post('photo-sessions/{photoSession}/resend-email', [PhotoSessionController::class, 'resendEmail'])->name('photo-sessions.resend-email');
+    Route::get('photo-sessions/{photoSession}/download-all', [PhotoSessionController::class, 'downloadAll'])->name('photo-sessions.download-all');
     Route::get('photos/{photo}/download', [PhotoSessionController::class, 'downloadPhoto'])->name('photos.download');
 
     // Laporan

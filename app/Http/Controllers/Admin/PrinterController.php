@@ -21,11 +21,28 @@ class PrinterController extends Controller
     public function index(Request $request): View
     {
         $user = $request->user();
-        $branchFilter = $user->isCabang() ? $user->branch_id : ($request->integer('branch') ?: null);
+
+        // Cabang user only sees their own branch's printers (no global).
+        // Admin sees everything; can filter by branch ('global' => null branch_id).
+        $branchFilter = null;
+        $filterMode = 'all';
+        if ($user->isCabang()) {
+            $branchFilter = $user->branch_id;
+            $filterMode = 'branch';
+        } elseif ($request->filled('branch')) {
+            if ($request->string('branch')->toString() === 'global') {
+                $filterMode = 'global';
+            } else {
+                $branchFilter = $request->integer('branch');
+                $filterMode = 'branch';
+            }
+        }
 
         $printers = Printer::query()
             ->with('branch')
-            ->when($branchFilter, fn ($q) => $q->where('branch_id', $branchFilter))
+            ->when($filterMode === 'branch', fn ($q) => $q->where('branch_id', $branchFilter))
+            ->when($filterMode === 'global', fn ($q) => $q->whereNull('branch_id'))
+            ->orderByRaw('branch_id IS NULL DESC')
             ->orderBy('branch_id')
             ->orderBy('purpose')
             ->get();
@@ -33,7 +50,7 @@ class PrinterController extends Controller
         return view('printers.index', [
             'printers' => $printers,
             'branches' => $this->visibleBranches($request),
-            'branchFilter' => $branchFilter,
+            'branchFilter' => $request->string('branch')->toString(),
             'purposeLabels' => Printer::purposeLabels(),
         ]);
     }
@@ -147,7 +164,7 @@ class PrinterController extends Controller
         $branchIds = Branch::pluck('id')->all();
 
         $rules = [
-            'branch_id' => ['required', 'integer', 'in:'.implode(',', $branchIds)],
+            'branch_id' => ['nullable', 'integer', 'in:'.implode(',', $branchIds)],
             'purpose' => ['required', 'string', 'in:'.implode(',', $purposes)],
             'name' => ['nullable', 'string', 'max:100'],
             'connector' => ['required', 'string', 'in:'.implode(',', $connectors)],
@@ -157,17 +174,23 @@ class PrinterController extends Controller
         ];
 
         $data = $request->validate($rules);
+        $data['branch_id'] = $data['branch_id'] ?? null;
         $data['profile'] = $data['profile'] ?? 'simple';
         $data['is_active'] = $request->boolean('is_active');
 
         $duplicate = Printer::query()
-            ->where('branch_id', $data['branch_id'])
+            ->where(function ($q) use ($data) {
+                $data['branch_id'] === null
+                    ? $q->whereNull('branch_id')
+                    : $q->where('branch_id', $data['branch_id']);
+            })
             ->where('purpose', $data['purpose'])
             ->when($existing, fn ($q) => $q->where('id', '!=', $existing->id))
             ->exists();
 
         if ($duplicate) {
-            abort(422, 'Cabang ini sudah punya printer untuk purpose tersebut. Edit yang sudah ada.');
+            $where = $data['branch_id'] === null ? 'global' : 'cabang ini';
+            abort(422, "Sudah ada printer {$where} untuk purpose tersebut. Edit yang sudah ada.");
         }
 
         return $data;
@@ -176,7 +199,12 @@ class PrinterController extends Controller
     private function ensureBranchAllowed(Request $request, ?int $branchId): void
     {
         $user = $request->user();
-        if ($user->isCabang() && $user->branch_id !== $branchId) {
+        if (! $user->isCabang()) {
+            return;
+        }
+
+        // Cabang user can only manage printers for their own branch (not global, not other branches).
+        if ($branchId !== $user->branch_id) {
             abort(403, 'Anda hanya boleh mengelola printer cabang sendiri.');
         }
     }

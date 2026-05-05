@@ -2,11 +2,14 @@ import {
     CheckCircle,
     Download,
     Loader2,
+    Mail,
     PartyPopper,
     Printer,
     QrCode,
     RotateCcw,
+    Send,
     Sparkles,
+    X,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { composeFinalImage } from '@/components/booth/template-slot-utils';
@@ -146,6 +149,13 @@ export default function CompleteStep({
     );
     const [seconds, setSeconds] = useState(AUTO_RESET_SECONDS);
     const [printing, setPrinting] = useState(false);
+    const [emailOpen, setEmailOpen] = useState(false);
+    const [emailValue, setEmailValue] = useState('');
+    const [emailSending, setEmailSending] = useState(false);
+    const [emailFeedback, setEmailFeedback] = useState<{
+        kind: 'success' | 'error';
+        message: string;
+    } | null>(null);
     const autoPrintFiredRef = useRef(false);
     const composeRequestedRef = useRef(false);
     const uploadedHashRef = useRef<string | null>(null);
@@ -231,6 +241,54 @@ export default function CompleteStep({
         if (!composedImage) return;
         onEdit(composedImage);
     }, [composedImage, onEdit]);
+
+    const openEmailDialog = useCallback(() => {
+        setEmailFeedback(null);
+        setEmailOpen(true);
+    }, []);
+
+    const closeEmailDialog = useCallback(() => {
+        if (emailSending) return;
+        setEmailOpen(false);
+    }, [emailSending]);
+
+    const handleSendEmail = useCallback(
+        async (event: React.FormEvent<HTMLFormElement>) => {
+            event.preventDefault();
+            const trimmed = emailValue.trim();
+            if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+                setEmailFeedback({
+                    kind: 'error',
+                    message: 'Alamat email tidak valid.',
+                });
+                return;
+            }
+
+            setEmailSending(true);
+            setEmailFeedback(null);
+
+            try {
+                const response = await api.post<{ success: boolean; message: string }>(
+                    '/booth/session/email',
+                    { session_id: sessionId, email: trimmed },
+                );
+                setEmailFeedback({
+                    kind: 'success',
+                    message: response.message ?? 'Foto terkirim ke email kamu.',
+                });
+                setEmailValue('');
+            } catch (error) {
+                const message =
+                    error instanceof Error && error.message
+                        ? error.message
+                        : 'Gagal kirim email. Coba lagi.';
+                setEmailFeedback({ kind: 'error', message });
+            } finally {
+                setEmailSending(false);
+            }
+        },
+        [emailValue, sessionId],
+    );
 
     // Auto-print once when ready
     useEffect(() => {
@@ -465,7 +523,7 @@ export default function CompleteStep({
                         )}
 
                         {/* Action buttons */}
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                             <button
                                 onClick={handleDownload}
                                 disabled={!downloadUrl && !composedImage}
@@ -473,6 +531,14 @@ export default function CompleteStep({
                             >
                                 <Download className="h-3.5 w-3.5" />
                                 Download
+                            </button>
+                            <button
+                                onClick={openEmailDialog}
+                                disabled={!downloadUrl || phase !== 'ready'}
+                                className="flex items-center justify-center gap-1.5 rounded-[1rem] border border-zinc-200 bg-white px-2 py-2.5 text-xs font-bold text-zinc-700 transition hover:bg-zinc-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                                <Mail className="h-3.5 w-3.5" />
+                                Email
                             </button>
                             <button
                                 onClick={handleEditClick}
@@ -532,6 +598,124 @@ export default function CompleteStep({
                     </button>
                 </div>
             </div>
+
+            {emailOpen && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center px-4"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="email-dialog-title"
+                >
+                    <button
+                        type="button"
+                        aria-label="Tutup"
+                        onClick={closeEmailDialog}
+                        className="absolute inset-0 cursor-default bg-zinc-950/55 backdrop-blur-sm"
+                    />
+                    <div className="relative w-full max-w-md overflow-hidden rounded-[1.6rem] border border-white/70 bg-white shadow-2xl">
+                        <div className="flex items-start justify-between gap-3 border-b border-zinc-100 px-5 py-4">
+                            <div className="flex items-center gap-3">
+                                <div
+                                    className="flex h-10 w-10 items-center justify-center rounded-xl"
+                                    style={{ background: YELLOW }}
+                                >
+                                    <Mail className="h-5 w-5 text-black" strokeWidth={2.4} />
+                                </div>
+                                <div>
+                                    <h3
+                                        id="email-dialog-title"
+                                        className="text-base font-extrabold text-zinc-950"
+                                    >
+                                        Kirim foto ke email
+                                    </h3>
+                                    <p className="mt-0.5 text-xs text-zinc-500">
+                                        Kami kirim file foto + link unduh ke alamat
+                                        email kamu.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={closeEmailDialog}
+                                disabled={emailSending}
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-40"
+                                aria-label="Tutup dialog"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSendEmail} className="px-5 pt-4 pb-5">
+                            <label
+                                htmlFor="email-dialog-input"
+                                className="text-[11px] font-bold tracking-widest text-zinc-500 uppercase"
+                            >
+                                Alamat email
+                            </label>
+                            <input
+                                id="email-dialog-input"
+                                type="email"
+                                inputMode="email"
+                                autoComplete="email"
+                                autoFocus
+                                required
+                                value={emailValue}
+                                onChange={(event) => {
+                                    setEmailValue(event.target.value);
+                                    if (emailFeedback) setEmailFeedback(null);
+                                }}
+                                placeholder="nama@email.com"
+                                disabled={emailSending}
+                                className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-zinc-900 outline-none transition focus:border-zinc-900 focus:ring-4 focus:ring-zinc-900/10 disabled:opacity-50"
+                            />
+
+                            {emailFeedback && (
+                                <p
+                                    className={`mt-3 rounded-lg px-3 py-2 text-xs font-semibold ${
+                                        emailFeedback.kind === 'success'
+                                            ? 'bg-emerald-50 text-emerald-700'
+                                            : 'bg-red-50 text-red-700'
+                                    }`}
+                                    role={
+                                        emailFeedback.kind === 'error'
+                                            ? 'alert'
+                                            : 'status'
+                                    }
+                                >
+                                    {emailFeedback.message}
+                                </p>
+                            )}
+
+                            <div className="mt-5 flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={closeEmailDialog}
+                                    disabled={emailSending}
+                                    className="flex-1 rounded-xl border border-zinc-200 bg-white py-2.5 text-sm font-bold text-zinc-700 transition hover:bg-zinc-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                    Tutup
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={emailSending || !downloadUrl}
+                                    className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-black text-black transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                                    style={{
+                                        background: YELLOW,
+                                        boxShadow: '0 4px 16px rgba(232,201,0,0.35)',
+                                    }}
+                                >
+                                    {emailSending ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <Send className="h-4 w-4" strokeWidth={2.4} />
+                                    )}
+                                    {emailSending ? 'Mengirim…' : 'Kirim'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

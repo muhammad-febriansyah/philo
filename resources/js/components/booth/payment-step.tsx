@@ -2,6 +2,7 @@ import {
     AlertTriangle,
     CheckCircle2,
     Clock,
+    ExternalLink,
     Loader2,
     ShieldCheck,
     Smartphone,
@@ -9,7 +10,7 @@ import {
     UserCheck,
     X,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 
 interface Transaction {
@@ -40,6 +41,7 @@ interface Props {
     onVoucherApplied: (newTransaction: Transaction) => void;
     onPaid: () => void;
     onExpired: () => void;
+    onReopenGateway?: (url?: string) => void;
 }
 
 function formatPrice(price: number) {
@@ -75,6 +77,7 @@ export default function PaymentStep({
     onVoucherApplied,
     onPaid,
     onExpired,
+    onReopenGateway,
 }: Props) {
     const [paid, setPaid] = useState(false);
     const [simulating, setSimulating] = useState(false);
@@ -85,10 +88,13 @@ export default function PaymentStep({
     const [voucherLoading, setVoucherLoading] = useState(false);
     const [voucherError, setVoucherError] = useState<string | null>(null);
     const [appliedVoucher, setAppliedVoucher] = useState<AppliedVoucherInfo | null>(null);
+    const [retrying, setRetrying] = useState(false);
+    const [retryError, setRetryError] = useState<string | null>(null);
     const { display, seconds, expired } = useCountdown(transaction.expired_at);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const isManual = transaction.payment_provider === 'manual';
+    const allowRetry = Boolean(onReopenGateway); // Duitku popup mode
 
     useEffect(() => {
         if (paid || expired || isManual) return;
@@ -112,8 +118,40 @@ export default function PaymentStep({
     }, [paid, expired, isManual, transaction.transaction_id, onPaid]);
 
     useEffect(() => {
-        if (expired && !paid) onExpired();
-    }, [expired, paid, onExpired]);
+        // Duitku popup mode keeps the user on this step so they can retry
+        // until payment succeeds — don't auto-reset to landing on expiry.
+        if (expired && !paid && !allowRetry) onExpired();
+    }, [expired, paid, onExpired, allowRetry]);
+
+    const handleRetryPayment = useCallback(async () => {
+        if (retrying) return;
+        setRetrying(true);
+        setRetryError(null);
+        try {
+            const fresh = await api.post<Transaction>('/booth/session/reissue', {
+                transaction_id: transaction.transaction_id,
+                voucher_code: appliedVoucher?.code ?? null,
+            });
+            onVoucherApplied(fresh);
+            if (onReopenGateway && fresh.payment_url) {
+                onReopenGateway(fresh.payment_url);
+            }
+        } catch (e) {
+            setRetryError(
+                e instanceof Error
+                    ? e.message
+                    : 'Gagal memuat ulang pembayaran.',
+            );
+        } finally {
+            setRetrying(false);
+        }
+    }, [
+        appliedVoucher,
+        onReopenGateway,
+        onVoucherApplied,
+        retrying,
+        transaction.transaction_id,
+    ]);
 
     const handleSimulate = async () => {
         setSimulating(true);
@@ -284,6 +322,15 @@ export default function PaymentStep({
                                         (e.target as HTMLImageElement).style.display = 'none';
                                     }}
                                 />
+                            ) : onReopenGateway ? (
+                                <button
+                                    type="button"
+                                    onClick={onReopenGateway}
+                                    className="flex items-center gap-2 rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-bold tracking-wider text-white uppercase active:scale-95"
+                                >
+                                    <ExternalLink className="h-4 w-4" />
+                                    Buka Halaman Pembayaran
+                                </button>
                             ) : (
                                 <a
                                     href={transaction.payment_url ?? '#'}
@@ -301,6 +348,22 @@ export default function PaymentStep({
                                     <p className="text-base font-bold text-green-600">Pembayaran Berhasil!</p>
                                 </div>
                             )}
+
+                            {!paid && expired && allowRetry && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-2xl bg-white/95 px-4 text-center">
+                                    <AlertTriangle
+                                        className="h-12 w-12 text-orange-500"
+                                        strokeWidth={1.6}
+                                    />
+                                    <p className="text-sm font-bold text-zinc-900">
+                                        Waktu pembayaran habis
+                                    </p>
+                                    <p className="text-[11px] text-zinc-500">
+                                        Klik &quot;Coba Lagi&quot; untuk
+                                        memperbarui kode bayar.
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
                         <p className="mt-3 text-xs text-zinc-400">
@@ -312,6 +375,50 @@ export default function PaymentStep({
                         </p>
                     </div>
                 </div>
+
+                {/* Reopen Duitku popup — available while waiting */}
+                {onReopenGateway && !paid && !expired && hasQr && (
+                    <button
+                        type="button"
+                        onClick={() => onReopenGateway()}
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white/80 px-4 py-3 text-sm font-bold text-zinc-700 transition hover:border-zinc-400 hover:bg-white active:scale-[0.99]"
+                    >
+                        <ExternalLink className="h-4 w-4" />
+                        Buka Halaman Pembayaran
+                    </button>
+                )}
+
+                {/* Retry on expiry — Duitku popup mode */}
+                {allowRetry && expired && !paid && (
+                    <div className="w-full space-y-2">
+                        <button
+                            type="button"
+                            onClick={handleRetryPayment}
+                            disabled={retrying}
+                            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-bold tracking-wider text-white uppercase transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {retrying ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <ExternalLink className="h-4 w-4" />
+                            )}
+                            {retrying ? 'Memuat ulang…' : 'Coba Lagi Pembayaran'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onExpired}
+                            disabled={retrying}
+                            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white/80 px-4 py-2.5 text-xs font-semibold text-zinc-500 transition hover:bg-white active:scale-[0.99] disabled:opacity-50"
+                        >
+                            Batalkan Pembayaran
+                        </button>
+                        {retryError && (
+                            <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+                                {retryError}
+                            </p>
+                        )}
+                    </div>
+                )}
 
                 {/* Voucher action — below QR card */}
                 {!paid && (
@@ -576,8 +683,9 @@ export default function PaymentStep({
                     <p className="text-xs text-zinc-500">Transaksi aman &amp; terenkripsi</p>
                 </div>
 
-                {/* Simulate button (dev/staging only) */}
-                {!paid && !isManual && (
+                {/* Simulate button — visible only during local dev. Stripped
+                    out of production bundles by Vite dead-code elimination. */}
+                {import.meta.env.DEV && !paid && !isManual && (
                     <button
                         onClick={handleSimulate}
                         disabled={simulating || expired}

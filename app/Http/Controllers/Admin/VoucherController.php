@@ -202,9 +202,6 @@ class VoucherController extends Controller
     public function printThermal(Request $request, Voucher $voucher, ThermalPrinterService $printer): JsonResponse
     {
         $branch = $this->resolvePrintBranch($request);
-        if (! $branch instanceof Branch) {
-            return $branch;
-        }
 
         try {
             $printer->printVoucher($this->buildThermalPayload($voucher), $branch);
@@ -212,8 +209,10 @@ class VoucherController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
+        $target = $branch?->name ?? 'global';
+
         return response()->json([
-            'message' => 'Voucher '.$voucher->code.' terkirim ke printer cabang '.$branch->name.'.',
+            'message' => 'Voucher '.$voucher->code.' terkirim ke printer '.$target.'.',
             'count' => 1,
         ]);
     }
@@ -228,9 +227,6 @@ class VoucherController extends Controller
         ]);
 
         $branch = $this->resolvePrintBranch($request);
-        if (! $branch instanceof Branch) {
-            return $branch;
-        }
 
         $payloads = Voucher::query()
             ->whereIn('id', $validated['voucher_ids'])
@@ -245,29 +241,20 @@ class VoucherController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
+        $target = $branch?->name ?? 'global';
+
         return response()->json([
-            'message' => $count.' voucher terkirim ke printer cabang '.$branch->name.'.',
+            'message' => $count.' voucher terkirim ke printer '.$target.'.',
             'count' => $count,
         ]);
     }
 
-    private function resolvePrintBranch(Request $request): Branch|JsonResponse
+    private function resolvePrintBranch(Request $request): ?Branch
     {
-        $user = $request->user();
-        $branchId = $user->branch_id ?? $request->integer('branch_id');
+        $branchId = $request->user()->branch_id;
 
-        if (! $branchId) {
-            return response()->json([
-                'message' => 'Anda belum terhubung ke cabang. Hubungkan akun Anda ke cabang dulu.',
-            ], 422);
-        }
-
-        $branch = Branch::find($branchId);
-        if (! $branch) {
-            return response()->json(['message' => 'Cabang tidak ditemukan.'], 422);
-        }
-
-        return $branch;
+        // Admin / non-cabang user without a branch -> service falls back to global printer.
+        return $branchId ? Branch::find($branchId) : null;
     }
 
     /**

@@ -27,7 +27,7 @@ const YELLOW = '#E8C900';
 const NAV_ITEMS = [
     { name: 'Home', link: '/' },
     { name: 'Profil', link: '/profil' },
-    { name: 'Harga', link: '/harga' },
+    // { name: 'Harga', link: '/harga' },
     { name: 'Cabang', link: '/cabang' },
     { name: 'Kontak Kami', link: '/kontak' },
 ];

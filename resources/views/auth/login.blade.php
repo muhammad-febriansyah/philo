@@ -50,6 +50,7 @@
                 font-family: 'Poppins', system-ui, -apple-system, sans-serif;
                 background: var(--paper);
                 min-height: 100vh;
+                min-height: 100dvh;
                 color: var(--ink);
                 -webkit-font-smoothing: antialiased;
                 -moz-osx-font-smoothing: grayscale;
@@ -61,13 +62,19 @@
             /* ────────── Layout ────────── */
             .shell {
                 min-height: 100vh;
+                min-height: 100dvh;
                 display: grid;
                 grid-template-columns: 1fr;
                 background: var(--paper);
             }
 
             @media (min-width: 1024px) {
-                .shell { grid-template-columns: 1fr 1fr; }
+                .shell {
+                    grid-template-columns: 1fr 1fr;
+                    height: 100vh;
+                    height: 100dvh;
+                    min-height: 0;
+                }
             }
 
             /* ─────────────────────────────────────────────
@@ -77,20 +84,21 @@
                 position: relative;
                 overflow: hidden;
                 background: var(--paper-2);
-                padding: 2.5rem;
+                padding: 2rem 2.5rem;
                 display: none;
                 flex-direction: column;
-                gap: 1.75rem;
-                min-height: 100vh;
+                gap: 1.25rem;
+                height: 100vh;
+                height: 100dvh;
                 border-right: 1px solid var(--line);
             }
 
             @media (min-width: 1024px) {
-                .hero { display: flex; padding: 2.5rem 2.5rem; }
+                .hero { display: flex; }
             }
 
             @media (min-width: 1280px) {
-                .hero { padding: 2.75rem 3rem; gap: 2rem; }
+                .hero { padding: 2.25rem 3rem; gap: 1.5rem; }
             }
 
             /* Subtle grid texture */
@@ -121,13 +129,13 @@
                 display: flex;
                 align-items: center;
                 gap: 0.7rem;
-                min-height: 72px;
+                min-height: 110px;
             }
 
             .hero-mark {
-                width: 38px;
-                height: 38px;
-                border-radius: 10px;
+                width: 56px;
+                height: 56px;
+                border-radius: 14px;
                 background: var(--ink);
                 display: flex;
                 align-items: center;
@@ -138,10 +146,10 @@
             }
 
             .hero-logo-img {
-                height: 72px;
+                height: 110px;
                 width: auto;
-                max-width: 280px;
-                object-fit: cover;
+                max-width: 380px;
+                object-fit: contain;
                 display: block;
             }
 
@@ -194,7 +202,7 @@
                 letter-spacing: 0.18em;
                 text-transform: uppercase;
                 color: var(--gold-deep);
-                margin-bottom: 1rem;
+                margin-bottom: 0.75rem;
                 display: flex;
                 align-items: center;
                 gap: 0.6rem;
@@ -209,11 +217,11 @@
 
             .hero-display {
                 font-weight: 800;
-                font-size: clamp(2rem, 3.4vw, 2.85rem);
+                font-size: clamp(1.85rem, 3vw, 2.5rem);
                 line-height: 1.05;
                 letter-spacing: -0.035em;
                 color: var(--ink);
-                margin-bottom: 0.85rem;
+                margin-bottom: 0.7rem;
             }
 
             .hero-display .accent {
@@ -395,7 +403,15 @@
             }
 
             @media (min-width: 768px) {
-                .form-side { padding: 3rem 2rem; }
+                .form-side { padding: 2.5rem 2rem; }
+            }
+
+            @media (min-width: 1024px) {
+                .form-side {
+                    height: 100vh;
+                    height: 100dvh;
+                    overflow-y: auto;
+                }
             }
 
             .form-wrap {
@@ -446,13 +462,13 @@
                 display: flex;
                 align-items: center;
                 gap: 0.65rem;
-                min-height: 56px;
-                margin-bottom: 1.75rem;
+                min-height: 80px;
+                margin-bottom: 1.5rem;
             }
 
             .mobile-brand .hero-logo-img {
-                height: 56px;
-                max-width: 220px;
+                height: 80px;
+                max-width: 280px;
             }
 
             @media (min-width: 1024px) {
@@ -468,7 +484,7 @@
 
             /* Form header */
             .form-head {
-                margin-bottom: 1.75rem;
+                margin-bottom: 1.25rem;
             }
 
             .form-eyebrow {
@@ -482,11 +498,11 @@
 
             .form-title {
                 font-weight: 800;
-                font-size: clamp(1.7rem, 3.2vw, 2.1rem);
+                font-size: clamp(1.55rem, 2.6vw, 1.85rem);
                 line-height: 1.1;
                 letter-spacing: -0.025em;
                 color: var(--ink);
-                margin-bottom: 0.55rem;
+                margin-bottom: 0.45rem;
             }
 
             .form-sub {
@@ -500,8 +516,8 @@
             .form-group {
                 display: flex;
                 flex-direction: column;
-                gap: 0.45rem;
-                margin-bottom: 1rem;
+                gap: 0.4rem;
+                margin-bottom: 0.85rem;
             }
 
             label {
@@ -531,7 +547,7 @@
             input[type="password"],
             input[type="text"] {
                 width: 100%;
-                padding: 0.92rem 1rem 0.92rem 2.85rem;
+                padding: 0.8rem 1rem 0.8rem 2.85rem;
                 border: 1.5px solid var(--line);
                 border-radius: 12px;
                 font-size: 0.93rem;
@@ -621,7 +637,7 @@
                 align-items: center;
                 justify-content: space-between;
                 gap: 1rem;
-                margin: 0.4rem 0 1.5rem;
+                margin: 0.35rem 0 1.1rem;
                 flex-wrap: wrap;
             }
 
@@ -702,7 +718,7 @@
             /* CTA */
             .btn-submit {
                 width: 100%;
-                padding: 1rem 1.25rem;
+                padding: 0.9rem 1.25rem;
                 background: var(--ink);
                 color: var(--paper);
                 border: none;
@@ -737,8 +753,8 @@
 
             /* Trust strip */
             .trust-strip {
-                margin-top: 2rem;
-                padding-top: 1.5rem;
+                margin-top: 1.4rem;
+                padding-top: 1.1rem;
                 border-top: 1px solid var(--line);
                 display: flex;
                 align-items: center;
@@ -793,7 +809,6 @@
                             <span class="hero-brand-name">{{ $siteName }}</span>
                         @endif
                     </div>
-                    <span class="hero-pill">SISTEM ONLINE</span>
                 </header>
 
                 <div class="hero-copy">

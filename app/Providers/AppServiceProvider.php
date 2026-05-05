@@ -37,7 +37,7 @@ class AppServiceProvider extends ServiceProvider
         View::composer('emails.*', function ($view) {
             try {
                 $settings = Setting::getMany([
-                    'site_name', 'logo_path', 'footer_text',
+                    'site_name', 'logo_path', 'email_logo_url', 'footer_text',
                     'instagram_url', 'facebook_url', 'whatsapp_number',
                 ]);
             } catch (\Throwable) {
@@ -47,9 +47,16 @@ class AppServiceProvider extends ServiceProvider
             $appUrl = (string) config('app.url');
             $isLocalUrl = preg_match('#^https?://(localhost|127\.0\.0\.1|192\.168\.|10\.|0\.0\.0\.0)#', $appUrl) === 1;
 
-            $logoPath = $settings['logo_path'] ?? null;
-            // Skip logo URL when APP_URL is local — email clients cannot reach localhost.
-            $logoUrl = (! $isLocalUrl && $logoPath) ? url(Storage::url($logoPath)) : null;
+            // Resolve email logo: explicit override → uploaded logo via DB → null.
+            // Override is useful when APP_URL is local (e.g. dev) and admin wants
+            // to point to a publicly hosted version of the logo for emails.
+            $logoUrl = null;
+            $override = trim((string) ($settings['email_logo_url'] ?? ''));
+            if ($override !== '' && filter_var($override, FILTER_VALIDATE_URL)) {
+                $logoUrl = $override;
+            } elseif (! empty($settings['logo_path'])) {
+                $logoUrl = url(Storage::url($settings['logo_path']));
+            }
 
             $view->with([
                 'siteName' => $settings['site_name'] ?? config('app.name', 'Philo Photobooth'),
