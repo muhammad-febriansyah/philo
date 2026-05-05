@@ -38,7 +38,20 @@
             $logoPath = $siteSettings['logo_path'] ?? null;
             $ogImage = $logoPath ? Storage::url($logoPath) : '/philo.png';
             $ogImageAbsolute = str_starts_with($ogImage, 'http') ? $ogImage : (request()->getSchemeAndHttpHost() . $ogImage);
+
+            $faviconExt = strtolower(pathinfo($faviconPath ?? 'philo.png', PATHINFO_EXTENSION));
+            $faviconType = match ($faviconExt) {
+                'ico' => 'image/x-icon',
+                'svg' => 'image/svg+xml',
+                'jpg', 'jpeg' => 'image/jpeg',
+                'webp' => 'image/webp',
+                default => 'image/png',
+            };
             $faviconUrl = $faviconPath ? Storage::url($faviconPath) : '/philo.png';
+            // Cache-bust so admin changes propagate without manual clear.
+            $faviconVersion = $faviconPath ? substr(md5($faviconPath), 0, 8) : 'default';
+            $faviconUrl .= (str_contains($faviconUrl, '?') ? '&' : '?') . 'v=' . $faviconVersion;
+
             $currentUrl = url()->current();
         @endphp
 
@@ -61,8 +74,8 @@
         <meta name="twitter:title" content="{{ $siteName }}">
         <meta name="twitter:description" content="{{ $siteDescription }}">
         <meta name="twitter:image" content="{{ $ogImageAbsolute }}">
-        <link rel="icon" href="{{ $faviconUrl }}" sizes="any" type="image/png">
-        <link rel="shortcut icon" href="{{ $faviconUrl }}">
+        <link rel="icon" href="{{ $faviconUrl }}" sizes="any" type="{{ $faviconType }}">
+        <link rel="shortcut icon" href="{{ $faviconUrl }}" type="{{ $faviconType }}">
         <link rel="apple-touch-icon" href="{{ $faviconUrl }}">
         <link rel="image_src" href="{{ $ogImageAbsolute }}">
 

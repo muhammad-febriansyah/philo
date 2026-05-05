@@ -6,15 +6,25 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="csrf-token" content="{{ csrf_token() }}">
         @php
-            $faviconUrl = !empty($siteSettings['favicon_path']) ? Storage::url($siteSettings['favicon_path']) : '/philo.png';
+            $loginFaviconPath = $siteSettings['favicon_path'] ?? null;
+            $loginFaviconExt = strtolower(pathinfo($loginFaviconPath ?? 'philo.png', PATHINFO_EXTENSION));
+            $loginFaviconType = match ($loginFaviconExt) {
+                'ico' => 'image/x-icon',
+                'svg' => 'image/svg+xml',
+                'jpg', 'jpeg' => 'image/jpeg',
+                'webp' => 'image/webp',
+                default => 'image/png',
+            };
+            $faviconUrl = $loginFaviconPath ? Storage::url($loginFaviconPath) : '/philo.png';
+            $faviconUrl .= (str_contains($faviconUrl, '?') ? '&' : '?') . 'v=' . ($loginFaviconPath ? substr(md5($loginFaviconPath), 0, 8) : 'default');
             $logoUrl = !empty($siteSettings['logo_path']) ? Storage::url($siteSettings['logo_path']) : null;
             $siteName = $siteSettings['site_name'] ?? config('app.name');
             $heroImages = ($galleries ?? collect())->values();
             $bento = $heroImages->take(4);
             $mobilePics = $heroImages->take(3);
         @endphp
-        <link rel="icon" href="{{ $faviconUrl }}" sizes="any" type="image/png">
-        <link rel="shortcut icon" href="{{ $faviconUrl }}">
+        <link rel="icon" href="{{ $faviconUrl }}" sizes="any" type="{{ $loginFaviconType }}">
+        <link rel="shortcut icon" href="{{ $faviconUrl }}" type="{{ $loginFaviconType }}">
         <link rel="apple-touch-icon" href="{{ $faviconUrl }}">
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

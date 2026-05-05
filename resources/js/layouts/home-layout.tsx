@@ -102,16 +102,33 @@ export default function HomeLayout({
     const currentFullUrl =
         typeof window !== 'undefined' ? window.location.href : '';
 
+    // Always render a favicon link — uploaded from DB if present, otherwise
+    // fall back to the bundled /philo.png. Using DB data ensures changes in
+    // admin settings reflect immediately on the public site.
+    const faviconPath = settings?.favicon_path ?? '';
+    const faviconExt = (faviconPath.split('.').pop() ?? 'png').toLowerCase();
+    const faviconMime: Record<string, string> = {
+        ico: 'image/x-icon',
+        png: 'image/png',
+        svg: 'image/svg+xml',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        webp: 'image/webp',
+    };
+    const faviconType = faviconMime[faviconExt] ?? 'image/png';
+    const faviconHash = faviconPath
+        ? faviconPath.split('').reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0)
+        : 0;
+    const faviconUrl = faviconPath
+        ? `/storage/${faviconPath}?v=${Math.abs(faviconHash).toString(36)}`
+        : `/philo.png?v=default`;
+
     return (
         <>
             <Head title={`${title} – ${siteName}`}>
-                {settings?.favicon_path && (
-                    <link
-                        rel="icon"
-                        type="image/x-icon"
-                        href={`/storage/${settings.favicon_path}?v=${encodeURIComponent(settings.favicon_path)}`}
-                    />
-                )}
+                <link rel="icon" type={faviconType} href={faviconUrl} />
+                <link rel="shortcut icon" type={faviconType} href={faviconUrl} />
+                <link rel="apple-touch-icon" href={faviconUrl} />
 
                 {/* SEO */}
                 <meta name="description" content={siteDescription} />

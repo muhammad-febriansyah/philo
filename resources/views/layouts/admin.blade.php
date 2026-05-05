@@ -7,11 +7,24 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <!-- App favicon -->
-        @if(!empty($siteSettings['favicon_path']))
-            <link rel="shortcut icon" href="{{ Storage::url($siteSettings['favicon_path']) }}">
-        @else
-            <link rel="shortcut icon" href="{{ asset('assets/images/favicon.ico') }}">
-        @endif
+        @php
+            $adminFaviconPath = $siteSettings['favicon_path'] ?? null;
+            $adminFaviconExt = strtolower(pathinfo($adminFaviconPath ?? 'favicon.ico', PATHINFO_EXTENSION));
+            $adminFaviconType = match ($adminFaviconExt) {
+                'png' => 'image/png',
+                'svg' => 'image/svg+xml',
+                'jpg', 'jpeg' => 'image/jpeg',
+                'webp' => 'image/webp',
+                default => 'image/x-icon',
+            };
+            $adminFaviconUrl = $adminFaviconPath
+                ? Storage::url($adminFaviconPath)
+                : asset('assets/images/favicon.ico');
+            $adminFaviconUrl .= (str_contains($adminFaviconUrl, '?') ? '&' : '?') . 'v=' . ($adminFaviconPath ? substr(md5($adminFaviconPath), 0, 8) : 'default');
+        @endphp
+        <link rel="icon" href="{{ $adminFaviconUrl }}" type="{{ $adminFaviconType }}">
+        <link rel="shortcut icon" href="{{ $adminFaviconUrl }}" type="{{ $adminFaviconType }}">
+        <link rel="apple-touch-icon" href="{{ $adminFaviconUrl }}">
         <!-- Bootstrap Css -->
         <link href="{{ asset('assets/css/bootstrap.min.css') }}" rel="stylesheet" type="text/css" />
         <!-- Icons Css -->

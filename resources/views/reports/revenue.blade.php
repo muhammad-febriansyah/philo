@@ -91,7 +91,7 @@
         <div class="col-xl col-lg-4 col-md-6">
             <div class="kpi-card kpi-card-warning h-100" style="background: linear-gradient(135deg, #fef3c7 0%, #fff 100%);">
                 <div class="kpi-card-body">
-                    <div class="kpi-icon" style="background:rgba(217,119,6,.12);color:#92400e;"><i class="mdi mdi-ticket-percent-outline"></i></div>
+                    <div class="kpi-icon" style="background:rgba(217,119,6,.12);color:#92400e;"><i class="mdi mdi-ticket-percent"></i></div>
                     <p class="kpi-label">Total Diskon</p>
                     <h4 class="kpi-value text-warning">Rp {{ number_format($totalDiscount, 0, ',', '.') }}</h4>
                     <span class="kpi-sub">{{ number_format($voucherTransactions, 0, ',', '.') }} transaksi pakai voucher</span>
