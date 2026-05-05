@@ -96,7 +96,6 @@ export default function BranchShow() {
 
     const sessions = branch.photo_sessions_count ?? 0;
     const transactions = branch.transactions_count ?? 0;
-    const boothUrl = `/booth/${branch.code}`;
 
     return (
         <HomeLayout title={branch.name}>
@@ -199,15 +198,6 @@ export default function BranchShow() {
 
                         {/* CTAs */}
                         <div className="mt-8 flex flex-wrap gap-3">
-                            <Link
-                                href={boothUrl}
-                                className="group inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-bold text-black transition hover:-translate-y-0.5 hover:brightness-105 active:scale-95"
-                                style={{ background: YELLOW, boxShadow: '0 6px 28px rgba(232,201,0,0.55)' }}
-                            >
-                                <CameraIcon />
-                                Mulai Sesi Foto
-                                <span className="-mr-1 transition group-hover:translate-x-1">→</span>
-                            </Link>
                             {branch.phone && (
                                 <a
                                     href={`tel:${branch.phone}`}
@@ -415,47 +405,6 @@ export default function BranchShow() {
                     </div>
                 </section>
             )}
-
-            {/* ── CTA ── */}
-            <section className="px-6 pb-16 sm:px-8">
-                <div className="mx-auto max-w-6xl">
-                    <div
-                        className="relative overflow-hidden rounded-[2rem] px-6 py-12 text-center sm:px-12 md:py-16"
-                        style={{ background: 'linear-gradient(135deg, #18181b 0%, #27272a 60%, #18181b 100%)' }}
-                    >
-                        <div
-                            className="pointer-events-none absolute -top-24 left-1/2 size-72 -translate-x-1/2 rounded-full blur-3xl"
-                            style={{ background: 'rgba(232,201,0,0.18)' }}
-                        />
-                        <div className="relative">
-                            <span
-                                className="inline-block rounded-full px-3 py-1 text-[11px] font-bold tracking-widest text-black uppercase"
-                                style={{ background: YELLOW }}
-                            >
-                                Siap berfoto?
-                            </span>
-                            <h2
-                                className="mt-4 text-3xl font-extrabold leading-tight text-white md:text-5xl"
-                                style={{ fontFamily: "'Poppins', sans-serif" }}
-                            >
-                                Mulai sesi di {branch.name}
-                            </h2>
-                            <p className="mx-auto mt-3 max-w-xl text-sm text-white/60 md:text-base">
-                                Pilih paket, ambil foto, dan langsung cetak. Pembayaran QRIS, hasilnya bisa diunduh & dicetak instan.
-                            </p>
-                            <Link
-                                href={boothUrl}
-                                className="group mt-7 inline-flex items-center gap-2 rounded-full px-8 py-4 text-base font-extrabold text-black transition hover:-translate-y-0.5 hover:brightness-105 active:scale-95"
-                                style={{ background: YELLOW, boxShadow: '0 12px 36px rgba(232,201,0,0.45)' }}
-                            >
-                                <CameraIcon />
-                                Buka Booth Sekarang
-                                <span className="transition group-hover:translate-x-1">→</span>
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </section>
 
             {/* ── OTHER BRANCHES ── */}
             {otherBranches.length > 0 && (
